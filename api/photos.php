@@ -80,6 +80,11 @@ class PhotoController extends BaseController {
             $this->error('只允许上传图片文件', 'VALIDATION_ERROR');
         }
 
+        $imageInfo = @getimagesize($file['tmp_name']);
+        if ($imageInfo === false || !in_array($imageInfo[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP])) {
+            $this->error('文件不是有效的图片', 'VALIDATION_ERROR');
+        }
+
         $ext = match($mimeType) {
             'image/jpeg' => 'jpg',
             'image/png' => 'png',
@@ -100,6 +105,8 @@ class PhotoController extends BaseController {
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
             $this->serverError('文件保存失败');
         }
+
+        chmod($destination, 0644);
 
         $url = '/assets/uploads/' . $filename;
 
@@ -128,6 +135,10 @@ class PhotoController extends BaseController {
             $this->error($errors[0], 'VALIDATION_ERROR');
         }
 
+        if (!$this->isUrlSafe($url)) {
+            $this->error('不允许的 URL', 'VALIDATION_ERROR');
+        }
+
         $headers = @get_headers($url, 1);
         if ($headers === false || strpos($headers[0], '200') === false) {
             $this->error('图片 URL 无法访问或不存在', 'VALIDATION_ERROR');
@@ -152,6 +163,47 @@ class PhotoController extends BaseController {
         $newItem = $stmt->fetch();
 
         $this->success($newItem, '添加成功', 201);
+    }
+
+    private function isUrlSafe(string $url): bool {
+        $parsed = parse_url($url);
+        if (!$parsed || !isset($parsed['scheme']) || !isset($parsed['host'])) {
+            return false;
+        }
+
+        $scheme = strtolower($parsed['scheme']);
+        if (!in_array($scheme, ['http', 'https'])) {
+            return false;
+        }
+
+        $host = strtolower($parsed['host']);
+
+        if (in_array($host, ['localhost', '127.0.0.1', '::1', '0.0.0.0'])) {
+            return false;
+        }
+
+        if (str_starts_with($host, '192.168.') ||
+            str_starts_with($host, '10.') ||
+            str_starts_with($host, '172.16.') || str_starts_with($host, '172.17.') ||
+            str_starts_with($host, '172.18.') || str_starts_with($host, '172.19.') ||
+            str_starts_with($host, '172.20.') || str_starts_with($host, '172.21.') ||
+            str_starts_with($host, '172.22.') || str_starts_with($host, '172.23.') ||
+            str_starts_with($host, '172.24.') || str_starts_with($host, '172.25.') ||
+            str_starts_with($host, '172.26.') || str_starts_with($host, '172.27.') ||
+            str_starts_with($host, '172.28.') || str_starts_with($host, '172.29.') ||
+            str_starts_with($host, '172.30.') || str_starts_with($host, '172.31.') ||
+            str_starts_with($host, '169.254.') ||
+            str_starts_with($host, 'fc00:') || str_starts_with($host, 'fd00:') ||
+            str_starts_with($host, 'fe80:') || str_starts_with($host, 'fec0:')) {
+            return false;
+        }
+
+        $ip = gethostbyname($host);
+        if ($ip !== $host && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+            return false;
+        }
+
+        return true;
     }
 
     private function update(): void {
@@ -189,9 +241,11 @@ class PhotoController extends BaseController {
         $photo = $stmt->fetch();
 
         if ($photo && $photo['source_type'] === 'local') {
-            $filePath = __DIR__ . '/..' . $photo['url'];
-            if (file_exists($filePath)) {
-                unlink($filePath);
+            $uploadDir = realpath(__DIR__ . '/../assets/uploads/');
+            $filePath = realpath(__DIR__ . '/..' . $photo['url']);
+
+            if ($filePath !== false && str_starts_with($filePath, $uploadDir)) {
+                @unlink($filePath);
             }
         }
 

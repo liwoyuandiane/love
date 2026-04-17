@@ -12,31 +12,70 @@ class ValidationException extends Exception {
 }
 
 class Validator {
-    public static function required(mixed $value, string $field): void {
+    private static array $rules = [
+        'required' => [self::class, 'validateRequired'],
+        'max' => [self::class, 'validateMax'],
+        'min' => [self::class, 'validateMin'],
+        'url' => [self::class, 'validateUrl'],
+        'date' => [self::class, 'validateDate'],
+        'email' => [self::class, 'validateEmail'],
+        'integer' => [self::class, 'validateInteger'],
+        'inRange' => [self::class, 'validateInRange'],
+    ];
+
+    public static function validate(array $data, array $rules): array {
+        $errors = [];
+
+        foreach ($rules as $field => $ruleSet) {
+            $ruleList = is_array($ruleSet) ? $ruleSet : explode('|', $ruleSet);
+            $value = $data[$field] ?? '';
+
+            foreach ($ruleList as $rule) {
+                $params = [];
+                if (is_string($rule) && str_contains($rule, ':')) {
+                    [$rule, $paramStr] = explode(':', $rule, 2);
+                    $params = explode(',', $paramStr);
+                }
+
+                if (isset(self::$rules[$rule])) {
+                    try {
+                        $validator = self::$rules[$rule];
+                        $validator($value, $field, ...$params);
+                    } catch (ValidationException $e) {
+                        $errors[] = $e->getMessage();
+                    }
+                }
+            }
+        }
+
+        return $errors;
+    }
+
+    private static function validateRequired(mixed $value, string $field): void {
         if ($value === null || (is_string($value) && trim($value) === '')) {
             throw new ValidationException("{$field}为必填项");
         }
     }
 
-    public static function maxLength(string $value, int $length, string $field): void {
-        if (strlen($value) > $length) {
+    private static function validateMax(string $value, string $field, string $length): void {
+        if (mb_strlen($value) > intval($length)) {
             throw new ValidationException("{$field}长度不能超过{$length}个字符");
         }
     }
 
-    public static function minLength(string $value, int $length, string $field): void {
-        if (strlen($value) < $length) {
+    private static function validateMin(string $value, string $field, string $length): void {
+        if (mb_strlen($value) < intval($length)) {
             throw new ValidationException("{$field}长度不能少于{$length}个字符");
         }
     }
 
-    public static function url(string $value, string $field): void {
-        if (!filter_var($value, FILTER_VALIDATE_URL)) {
+    private static function validateUrl(string $value, string $field): void {
+        if ($value !== '' && !filter_var($value, FILTER_VALIDATE_URL)) {
             throw new ValidationException("{$field}不是有效的URL");
         }
     }
 
-    public static function date(string $value, string $field): void {
+    private static function validateDate(string $value, string $field): void {
         if ($value !== '') {
             $d = DateTime::createFromFormat('Y-m-d', $value);
             if (!($d && $d->format('Y-m-d') === $value)) {
@@ -45,52 +84,54 @@ class Validator {
         }
     }
 
-    public static function email(string $value, string $field): void {
+    private static function validateEmail(string $value, string $field): void {
         if ($value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
             throw new ValidationException("{$field}不是有效的邮箱格式");
         }
     }
 
-    public static function integer(mixed $value, string $field): void {
+    private static function validateInteger(mixed $value, string $field): void {
         if (!is_numeric($value) || intval($value) != $value) {
             throw new ValidationException("{$field}必须是整数");
         }
     }
 
-    public static function inRange(mixed $value, int $min, int $max, string $field): void {
+    private static function validateInRange(mixed $value, string $field, string $min, string $max): void {
         $num = intval($value);
-        if ($num < $min || $num > $max) {
+        if ($num < intval($min) || $num > intval($max)) {
             throw new ValidationException("{$field}必须在{$min}到{$max}之间");
         }
     }
 
-    public static function validate(array $data, array $rules): array {
-        $errors = [];
-        foreach ($rules as $field => $ruleSet) {
-            $ruleList = explode('|', $ruleSet);
-            $value = $data[$field] ?? '';
-            foreach ($ruleList as $rule) {
-                try {
-                    if ($rule === 'required') {
-                        self::required($value, $field);
-                    } elseif (strpos($rule, 'max:') === 0) {
-                        $len = intval(substr($rule, 4));
-                        self::maxLength($value, $len, $field);
-                    } elseif (strpos($rule, 'min:') === 0) {
-                        $len = intval(substr($rule, 4));
-                        self::minLength($value, $len, $field);
-                    } elseif ($rule === 'url') {
-                        self::url($value, $field);
-                    } elseif ($rule === 'date') {
-                        self::date($value, $field);
-                    } elseif ($rule === 'email') {
-                        self::email($value, $field);
-                    }
-                } catch (ValidationException $e) {
-                    $errors[] = $e->getMessage();
-                }
-            }
-        }
-        return $errors;
+    public static function required(mixed $value, string $field): void {
+        self::validateRequired($value, $field);
+    }
+
+    public static function maxLength(string $value, int $length, string $field): void {
+        self::validateMax($value, $field, (string)$length);
+    }
+
+    public static function minLength(string $value, int $length, string $field): void {
+        self::validateMin($value, $field, (string)$length);
+    }
+
+    public static function url(string $value, string $field): void {
+        self::validateUrl($value, $field);
+    }
+
+    public static function date(string $value, string $field): void {
+        self::validateDate($value, $field);
+    }
+
+    public static function email(string $value, string $field): void {
+        self::validateEmail($value, $field);
+    }
+
+    public static function integer(mixed $value, string $field): void {
+        self::validateInteger($value, $field);
+    }
+
+    public static function inRange(mixed $value, int $min, int $max, string $field): void {
+        self::validateInRange($value, $field, (string)$min, (string)$max);
     }
 }

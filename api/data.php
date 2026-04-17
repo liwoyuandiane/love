@@ -2,7 +2,7 @@
 /**
  * API - 获取所有数据
  *
- * 直接从数据库读取，不使用本地缓存
+ * 直接从数据库读取，确保实时数据
  */
 
 require_once __DIR__ . '/../config.php';
@@ -32,7 +32,7 @@ try {
     $stmt = $db->query("SELECT id, url, caption, source_type, created_at, updated_at FROM photos ORDER BY created_at DESC");
     $photos = $stmt->fetchAll();
 
-    $stmt = $db->query("SELECT id, source_type, source_url, backup_url, title, artist, updated_at FROM music WHERE id = 1");
+    $stmt = $db->query("SELECT source_type, source_url, backup_url, title, artist FROM music WHERE id = 1");
     $music = $stmt->fetch();
 
     echo json_encode([

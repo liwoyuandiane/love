@@ -56,6 +56,19 @@ function verifyPassword(string $password, string $hash): bool {
     return password_verify($password, $hash);
 }
 
+function isPasswordStrong(string $password): bool {
+    if (strlen($password) < 8) {
+        return false;
+    }
+    if (!preg_match('/[A-Za-z]/', $password)) {
+        return false;
+    }
+    if (!preg_match('/[0-9]/', $password)) {
+        return false;
+    }
+    return true;
+}
+
 function getLoginAttempts(PDO $pdo, string $username): array {
     $stmt = $pdo->prepare("SELECT login_attempts, locked_until FROM admin_users WHERE username = ?");
     $stmt->execute([$username]);
@@ -90,7 +103,7 @@ function login(string $username, string $password): array {
     }
     
     if ($user['locked_until']) {
-        $lockedTime = strtotime($user['locked_until'] . ' UTC');
+        $lockedTime = strtotime($user['locked_until']);
         if ($lockedTime > time()) {
             $remaining = ceil(($lockedTime - time()) / 60);
             return ['success' => false, 'message' => "账号已锁定，请 {$remaining} 分钟后再试"];
@@ -117,6 +130,8 @@ function login(string $username, string $password): array {
     $_SESSION['user_username'] = $user['username'];
     $_SESSION['user_role'] = $user['role'] ?? 'admin';
 
+    Logger::audit('User login success', ['username' => $username]);
+
     return ['success' => true, 'message' => '登录成功'];
 }
 
@@ -136,4 +151,10 @@ function ensureSession(): void {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
+
+    if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 1800)) {
+        logout();
+        return;
+    }
+    $_SESSION['last_activity'] = time();
 }

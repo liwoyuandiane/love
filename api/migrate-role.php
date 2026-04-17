@@ -4,8 +4,17 @@
  */
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/auth.php';
 
 header('Content-Type: application/json');
+
+ensureSession();
+
+if (!isAdmin()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => '需要管理员权限']);
+    exit;
+}
 
 try {
     $db = getDB();

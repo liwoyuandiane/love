@@ -62,6 +62,11 @@ class MusicController extends BaseController {
         $title = trim($data['title'] ?? '');
         $artist = trim($data['artist'] ?? '');
 
+        $allowedSourceTypes = ['url', 'local'];
+        if (!in_array($sourceType, $allowedSourceTypes)) {
+            $sourceType = 'url';
+        }
+
         $stmt = $this->db->prepare(
             "UPDATE music SET source_type = ?, source_url = ?, backup_url = ?, title = ?, artist = ?, updated_at = NOW() WHERE id = 1"
         );

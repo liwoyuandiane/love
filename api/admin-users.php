@@ -64,6 +64,10 @@ class AdminUserController extends BaseController {
             $this->error($errors[0], 'VALIDATION_ERROR');
         }
 
+        if (!isPasswordStrong($password)) {
+            $this->error('密码至少8位，需包含字母和数字', 'VALIDATION_ERROR');
+        }
+
         if (!in_array($role, ['admin', 'user'])) {
             $role = 'user';
         }
@@ -96,17 +100,32 @@ class AdminUserController extends BaseController {
             $this->error('无效的ID', 'VALIDATION_ERROR');
         }
 
+        $username = trim($data['username'] ?? '');
         $password = $data['password'] ?? '';
 
+        if (!empty($username)) {
+            $stmt = $this->db->prepare("SELECT id FROM admin_users WHERE username = ? AND id != ?");
+            $stmt->execute([$username, $id]);
+            if ($stmt->fetch()) {
+                $this->error('用户名已存在', 'VALIDATION_ERROR');
+            }
+            $stmt = $this->db->prepare("UPDATE admin_users SET username = ? WHERE id = ?");
+            $stmt->execute([$username, $id]);
+            if ($id === $_SESSION['user_id']) {
+                $_SESSION['user_username'] = $username;
+            }
+        }
+
         if (!empty($password)) {
-            if (strlen($password) < 8) {
-                $this->error('密码至少8位', 'VALIDATION_ERROR');
+            if (!isPasswordStrong($password)) {
+                $this->error('密码至少8位，需包含字母和数字', 'VALIDATION_ERROR');
             }
             $hashedPassword = hashPassword($password);
             $stmt = $this->db->prepare("UPDATE admin_users SET password = ? WHERE id = ?");
             $stmt->execute([$hashedPassword, $id]);
         }
 
+        Logger::audit('Update admin user', ['user_id' => $id, 'by' => $_SESSION['user_username'] ?? 'unknown']);
         $this->success(null, '更新成功');
     }
 

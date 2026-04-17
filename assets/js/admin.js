@@ -120,7 +120,16 @@ const handleLogin = async () => {
         const res = await fetch(ADMIN_API.verify, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ username, password }) });
         const result = await res.json();
         if (result.success) {
-            isLoggedIn = true; $('loginOverlay').style.display = 'none'; $('adminContainer').classList.add('active'); loadAllData(); startPeriodicSync();
+            isLoggedIn = true;
+            isAdmin = true;
+            window.IS_ADMIN = true;
+            filterTabsByRole();
+            $('loginOverlay').style.display = 'none';
+            $('adminContainer').style.display = 'block';
+            $('adminContainer').classList.add('active');
+            $('loadingOverlay').style.display = 'flex';
+            loadAllData();
+            startPeriodicSync();
         } else { showToast(result.error?.message || '登录失败', 'error'); $('passwordInput').value = ''; }
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
 };
@@ -132,6 +141,8 @@ const loadAllData = async (showError = true) => {
             csrfFetch(`${API_BASE}/admin-users`, { credentials: 'include' }),
             csrfFetch(`${API_BASE}/admin-status`, { credentials: 'include' })
         ]);
+
+        $('loadingOverlay').style.display = 'none';
 
         if (dataRes.ok) {
             const data = await dataRes.json();
@@ -149,13 +160,40 @@ const loadAllData = async (showError = true) => {
         renderAllSections();
     } catch (e) {
         console.error('loadAllData error:', e);
+        $('loadingOverlay').style.display = 'none';
         if (showError) showToast('数据加载失败，请刷新页面', 'error');
     }
 };
 
 const renderAllSections = () => {
     renderCoupleInfo(); renderAnniversaryTable(); renderWishlistTable(); renderExploreTable();
-    renderPhotoGrid(); renderMusicForm(); renderAdminUserTable();
+    renderPhotoGrid(); renderMusicForm();
+};
+
+const addToLocalList = (type, item) => {
+    if (!siteData) return;
+    const list = siteData[type];
+    if (Array.isArray(list)) {
+        list.unshift(item);
+    }
+};
+
+const updateInLocalList = (type, id, updates) => {
+    if (!siteData) return;
+    const list = siteData[type];
+    if (Array.isArray(list)) {
+        const idx = list.findIndex(i => i.id === id);
+        if (idx !== -1) Object.assign(list[idx], updates);
+    }
+};
+
+const removeFromLocalList = (type, id) => {
+    if (!siteData) return;
+    const list = siteData[type];
+    if (Array.isArray(list)) {
+        const idx = list.findIndex(i => i.id === id);
+        if (idx !== -1) list.splice(idx, 1);
+    }
 };
 
 const renderCoupleInfo = () => {
@@ -170,7 +208,14 @@ const handleCoupleSubmit = async e => {
     try {
         const res = await csrfFetch(`${API_BASE}/couple-info`, { method: 'PUT', credentials: 'include', body: JSON.stringify(data) });
         const result = await res.json();
-        if (result.success) { showToast('情侣信息更新成功', 'success'); loadAllData(); }
+        if (result.success) {
+            showToast('情侣信息更新成功', 'success');
+            if (siteData?.coupleInfo) {
+                siteData.coupleInfo.name1 = data.name1;
+                siteData.coupleInfo.name2 = data.name2;
+                siteData.coupleInfo.anniversary = data.anniversary;
+            }
+        }
         else showToast(result.error?.message || '更新失败', 'error');
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
 };
@@ -195,7 +240,12 @@ const handleAnniversarySubmit = async e => {
     try {
         const res = await csrfFetch(`${API_BASE}/anniversaries`, { method: 'POST', credentials: 'include', body: JSON.stringify(data) });
         const result = await res.json();
-        if (result.success) { showToast('添加成功', 'success'); ['anniversaryTitle', 'anniversaryDate', 'anniversaryDesc'].forEach(id => $(id).value = ''); loadAllData(); }
+        if (result.success) {
+            showToast('添加成功', 'success');
+            ['anniversaryTitle', 'anniversaryDate', 'anniversaryDesc'].forEach(id => $(id).value = '');
+            if (result.data) addToLocalList('anniversaries', result.data);
+            renderAnniversaryTable();
+        }
         else showToast(result.error?.message || '添加失败', 'error');
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
 };
@@ -214,7 +264,23 @@ const renderWishlistTable = () => {
 };
 
 window.toggleWishlistAdmin = async function(id) {
-    try { const res = await csrfFetch(`${API_BASE}/wishlists/${id}/toggle`, { method: 'POST', credentials: 'include' }); if (res.ok) loadAllData(); }
+    try {
+        const res = await csrfFetch(`${API_BASE}/wishlists/${id}/toggle`, { method: 'POST', credentials: 'include' });
+        const result = await res.json();
+        if (result.success) {
+            if (siteData?.wishlists) {
+                const item = siteData.wishlists.find(w => w.id === id);
+                if (item) {
+                    item.completed = result.data.completed;
+                    item.completed_at = result.data.completed_at;
+                }
+            }
+            renderWishlistTable();
+            showToast(result.message || '操作成功', 'success');
+        } else {
+            showToast(result.error?.message || '操作失败', 'error');
+        }
+    }
     catch (e) { showToast('操作失败', 'error'); }
 };
 
@@ -224,7 +290,12 @@ const handleWishlistSubmit = async e => {
     try {
         const res = await csrfFetch(`${API_BASE}/wishlists`, { method: 'POST', credentials: 'include', body: JSON.stringify(data) });
         const result = await res.json();
-        if (result.success) { showToast('添加成功', 'success'); ['wishlistTitle', 'wishlistDesc', 'wishlistDate'].forEach(id => $(id).value = ''); loadAllData(); }
+        if (result.success) {
+            showToast('添加成功', 'success');
+            ['wishlistTitle', 'wishlistDesc', 'wishlistDate'].forEach(id => $(id).value = '');
+            if (result.data) addToLocalList('wishlists', result.data);
+            renderWishlistTable();
+        }
         else showToast(result.error?.message || '添加失败', 'error');
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
 };
@@ -245,7 +316,12 @@ const handleExploreSubmit = async e => {
     try {
         const res = await csrfFetch(`${API_BASE}/explores`, { method: 'POST', credentials: 'include', body: JSON.stringify(data) });
         const result = await res.json();
-        if (result.success) { showToast('添加成功', 'success'); ['exploreTitle', 'exploreDesc', 'exploreDate'].forEach(id => $(id).value = ''); loadAllData(); }
+        if (result.success) {
+            showToast('添加成功', 'success');
+            ['exploreTitle', 'exploreDesc', 'exploreDate'].forEach(id => $(id).value = '');
+            if (result.data) addToLocalList('explores', result.data);
+            renderExploreTable();
+        }
         else showToast(result.error?.message || '添加失败', 'error');
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
 };
@@ -254,8 +330,16 @@ const renderPhotoGrid = () => {
     const photos = siteData?.photos || [];
     const grid = $('photoGrid');
     if (!photos.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-images"></i><p>暂无照片</p></div>'; return; }
+    const isValidUrl = url => {
+        if (!url) return false;
+        try {
+            const parsed = new URL(url);
+            return ['http:', 'https:'].includes(parsed.protocol);
+        } catch { return false; }
+    };
+    const safeUrl = url => isValidUrl(url) ? url : '';
     grid.innerHTML = photos.map(p => `
-        <div class="photo-item"><img src="${utils.escapeHtml(p.url)}" alt="${utils.escapeHtml(p.caption || '')}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%23333%22 width=%22200%22 height=%22200%22/><text x=%2250%%22 y=%2250%%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2214%22>加载失败</text></svg>'">
+        <div class="photo-item"><img src="${safeUrl(p.url)}" alt="${utils.escapeHtml(p.caption || '')}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%23333%22 width=%22200%22 height=%22200%22/><text x=%2250%%22 y=%2250%%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2214%22>加载失败</text></svg>'">
         <p class="caption">${utils.escapeHtml(p.caption || '无说明')}</p>
         <div class="actions"><button class="btn btn-danger btn-sm" onclick="deleteItem('photo',${p.id})"><i class="fas fa-trash"></i></button></div></div>`).join('');
 };
@@ -270,7 +354,13 @@ const handlePhotoUpload = async e => {
     try {
         const res = await csrfFetch(`${API_BASE}/photos`, { method: 'POST', credentials: 'include', body: formData });
         const result = await res.json();
-        if (result.success) { showToast('上传成功', 'success'); fileInput.value = ''; $('photoCaption').value = ''; loadAllData(); }
+        if (result.success) {
+            showToast('上传成功', 'success');
+            fileInput.value = '';
+            $('photoCaption').value = '';
+            if (result.data) addToLocalList('photos', result.data);
+            renderPhotoGrid();
+        }
         else showToast(result.error?.message || '上传失败', 'error');
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
 };
@@ -281,7 +371,13 @@ const handlePhotoUrl = async e => {
     try {
         const res = await csrfFetch(`${API_BASE}/photos`, { method: 'POST', credentials: 'include', body: JSON.stringify(data) });
         const result = await res.json();
-        if (result.success) { showToast('添加成功', 'success'); $('photoUrl').value = ''; $('photoUrlCaption').value = ''; loadAllData(); }
+        if (result.success) {
+            showToast('添加成功', 'success');
+            $('photoUrl').value = '';
+            $('photoUrlCaption').value = '';
+            if (result.data) addToLocalList('photos', result.data);
+            renderPhotoGrid();
+        }
         else showToast(result.error?.message || '添加失败', 'error');
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
 };
@@ -329,14 +425,20 @@ const handleMusicSubmit = async e => {
     try {
         const res = await csrfFetch(`${API_BASE}/music`, { method: 'PUT', credentials: 'include', body: JSON.stringify(data) });
         const result = await res.json();
-        if (result.success) { showToast('音乐设置已保存', 'success'); loadAllData(); }
+        if (result.success) {
+            showToast('音乐设置已保存', 'success');
+            if (siteData?.music) {
+                Object.assign(siteData.music, data);
+            }
+            updateMusicPreview();
+        }
         else showToast(result.error?.message || '保存失败', 'error');
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
 };
 
 const exportData = async () => {
     try {
-        const res = await csrfFetch(`${API_BASE}/export`, { method: 'GET', credentials: 'include' });
+        const res = await csrfFetch(`${API_BASE}/export`, { method: 'POST', credentials: 'include' });
         if (!res.ok) throw new Error('导出失败');
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
@@ -371,7 +473,8 @@ const importData = async file => {
 
 window.editItem = function(type, id, title, date, description) {
     const modal = $('editModal'), modalTitle = $('editModalTitle'), form = $('editForm');
-    modalTitle.innerHTML = `<i class="fas ${TYPE_ICONS[type]}"></i> 编辑${TYPE_NAMES[type]}`;
+    const safeType = ['anniversary', 'wishlist', 'explore', 'photo'].includes(type) ? type : 'anniversary';
+    modalTitle.innerHTML = `<i class="fas ${TYPE_ICONS[safeType] || 'fa-star'}"></i> 编辑${TYPE_NAMES[safeType] || '内容'}`;
     form.innerHTML = `
         <div class="form-group"><label>标题</label><input type="text" class="form-input" id="editTitle" value="${utils.escapeHtml(title)}" required maxlength="200"></div>
         <div class="form-group"><label>日期（可选）</label><input type="date" class="form-input" id="editDate" value="${utils.escapeHtml(date)}"></div>
@@ -381,9 +484,17 @@ window.editItem = function(type, id, title, date, description) {
         e.preventDefault();
         const updateData = { title: $('editTitle').value.trim(), date: $('editDate').value || null, description: $('editDescription').value.trim() || null };
         try {
-            const res = await csrfFetch(`${API_BASE}/${ENDPOINTS[type] || type + 's'}/${id}`, { method: 'PUT', credentials: 'include', body: JSON.stringify(updateData) });
+            const res = await csrfFetch(`${API_BASE}/${ENDPOINTS[safeType] || safeType + 's'}/${id}`, { method: 'PUT', credentials: 'include', body: JSON.stringify(updateData) });
             const result = await res.json();
-            if (result.success) { showToast('更新成功', 'success'); closeEditModal(); loadAllData(); }
+            if (result.success) {
+                showToast('更新成功', 'success');
+                closeEditModal();
+                updateInLocalList(safeType + 's', id, updateData);
+                if (safeType === 'anniversary') renderAnniversaryTable();
+                else if (safeType === 'wishlist') renderWishlistTable();
+                else if (safeType === 'explore') renderExploreTable();
+                else if (safeType === 'photo') renderPhotoGrid();
+            }
             else showToast(result.error?.message || '更新失败', 'error');
         } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
     };
@@ -397,7 +508,14 @@ const deleteItem = async (type, id) => {
     try {
         const res = await csrfFetch(`${API_BASE}/${ENDPOINTS[type]}/${id}`, { method: 'DELETE', credentials: 'include' });
         const result = await res.json();
-        if (result.success) { showToast('删除成功', 'success'); loadAllData(); }
+        if (result.success) {
+            showToast('删除成功', 'success');
+            removeFromLocalList(type === 'photo' ? 'photos' : type + 's', id);
+            if (type === 'anniversary') renderAnniversaryTable();
+            else if (type === 'wishlist') renderWishlistTable();
+            else if (type === 'explore') renderExploreTable();
+            else if (type === 'photo') renderPhotoGrid();
+        }
         else showToast(result.error?.message || '删除失败', 'error');
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
 };
@@ -420,9 +538,10 @@ window.showToast = (message, type = 'success') => {
 };
 
 const renderAdminUserTable = () => {
+    const tbody = $('adminUserTable');
+    if (!tbody) return;
     const users = window.adminUsers || [];
     const currentUser = window.currentUsername || '';
-    const tbody = $('adminUserTable');
 
     if (!users.length) { tbody.innerHTML = emptyState('fa-users', '暂无管理员'); return; }
     tbody.innerHTML = users.map(u => {
@@ -440,11 +559,16 @@ const renderAdminUserTable = () => {
 const handleAdminUserSubmit = async e => {
     e.preventDefault();
     const username = $('adminUsername').value.trim(), password = $('adminPassword').value;
+    if (!username && !password) { showToast('请填写用户名或密码', 'warning'); return; }
     try {
-        const res = await csrfFetch(`${API_BASE}/admin-users`, { method: 'POST', credentials: 'include', body: JSON.stringify({ username, password }) });
+        const res = await csrfFetch(`${API_BASE}/admin-users`, { method: 'PUT', credentials: 'include', body: JSON.stringify({ id: window.CURRENT_USER_ID, username, password }) });
         const result = await res.json();
-        if (result.success) { showToast('添加成功', 'success'); $('adminUsername').value = ''; $('adminPassword').value = ''; loadAllData(); }
-        else showToast(result.error?.message || '添加失败', 'error');
+        if (result.success) {
+            showToast('修改成功', 'success');
+            $('adminUsername').value = '';
+            $('adminPassword').value = '';
+        }
+        else showToast(result.error?.message || '修改失败', 'error');
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
 };
 
@@ -460,7 +584,7 @@ window.showChangePasswordModal = userId => {
         try {
             const res = await csrfFetch(`${API_BASE}/admin-users/${userId}`, { method: 'PUT', credentials: 'include', body: JSON.stringify({ password: newPassword }) });
             const result = await res.json();
-            if (result.success) { showToast('密码修改成功', 'success'); closeEditModal(); loadAllData(); }
+            if (result.success) { showToast('密码修改成功', 'success'); closeEditModal(); }
             else showToast(result.error?.message || '修改失败', 'error');
         } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
     };
@@ -480,7 +604,15 @@ window.showChangeUsernameModal = (userId, currentUsername) => {
         try {
             const res = await csrfFetch(`${API_BASE}/admin-users/${userId}`, { method: 'PUT', credentials: 'include', body: JSON.stringify({ username: newUsername }) });
             const result = await res.json();
-            if (result.success) { showToast('用户名修改成功', 'success'); closeEditModal(); loadAllData(); }
+            if (result.success) {
+                showToast('用户名修改成功', 'success');
+                closeEditModal();
+                if (window.adminUsers) {
+                    const user = window.adminUsers.find(u => u.id === userId);
+                    if (user) user.username = newUsername;
+                }
+                renderAdminUserTable();
+            }
             else showToast(result.error?.message || '修改失败', 'error');
         } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
     };
@@ -492,7 +624,14 @@ const deleteAdminUser = async userId => {
     try {
         const res = await csrfFetch(`${API_BASE}/admin-users/${userId}`, { method: 'DELETE', credentials: 'include' });
         const result = await res.json();
-        if (result.success) { showToast('删除成功', 'success'); loadAllData(); }
+        if (result.success) {
+            showToast('删除成功', 'success');
+            if (window.adminUsers) {
+                const idx = window.adminUsers.findIndex(u => u.id === userId);
+                if (idx !== -1) window.adminUsers.splice(idx, 1);
+            }
+            renderAdminUserTable();
+        }
         else showToast(result.error?.message || '删除失败', 'error');
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
 };

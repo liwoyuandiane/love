@@ -195,8 +195,10 @@ class DataCache {
 
             case 'anniversaries':
                 if (is_array($value)) {
+                    $allowedTypes = ['anniversary', 'birthday', 'wedding', 'other'];
                     foreach ($value as $item) {
                         if (isset($item['id']) && isset($item['title'], $item['date'])) {
+                            $type = in_array($item['type'] ?? '', $allowedTypes) ? $item['type'] : 'anniversary';
                             $stmt = $db->prepare(
                                 "INSERT INTO anniversaries (id, title, date, description, type, reminder_days, updated_at)
                                  VALUES (?, ?, ?, ?, ?, ?, NOW())
@@ -205,12 +207,12 @@ class DataCache {
                                  reminder_days = VALUES(reminder_days), updated_at = NOW()"
                             );
                             $stmt->execute([
-                                $item['id'],
-                                $item['title'],
+                                max(1, min(65535, intval($item['id'] ?? 0))),
+                                mb_substr($item['title'] ?? '', 0, 200),
                                 $item['date'] ?? null,
-                                $item['description'] ?? '',
-                                $item['type'] ?? 'anniversary',
-                                intval($item['reminder_days'] ?? 0)
+                                mb_substr($item['description'] ?? '', 0, 500),
+                                $type,
+                                max(0, min(365, intval($item['reminder_days'] ?? 0)))
                             ]);
                         }
                     }
@@ -229,11 +231,11 @@ class DataCache {
                                  completed_at = VALUES(completed_at), updated_at = NOW()"
                             );
                             $stmt->execute([
-                                $item['id'],
-                                $item['title'],
-                                $item['description'] ?? '',
+                                max(1, min(65535, intval($item['id'] ?? 0))),
+                                mb_substr($item['title'] ?? '', 0, 200),
+                                mb_substr($item['description'] ?? '', 0, 500),
                                 $item['date'] ?? null,
-                                intval($item['completed'] ?? 0),
+                                intval($item['completed'] ?? 0) ? 1 : 0,
                                 $item['completed_at'] ?? null
                             ]);
                         }
@@ -252,9 +254,9 @@ class DataCache {
                                  date = VALUES(date), updated_at = NOW()"
                             );
                             $stmt->execute([
-                                $item['id'],
-                                $item['title'],
-                                $item['description'] ?? '',
+                                max(1, min(65535, intval($item['id'] ?? 0))),
+                                mb_substr($item['title'] ?? '', 0, 200),
+                                mb_substr($item['description'] ?? '', 0, 500),
                                 $item['date'] ?? null
                             ]);
                         }
@@ -264,8 +266,10 @@ class DataCache {
 
             case 'photos':
                 if (is_array($value)) {
+                    $allowedSourceTypes = ['local', 'url'];
                     foreach ($value as $item) {
                         if (isset($item['id']) && isset($item['url'])) {
+                            $sourceType = in_array($item['source_type'] ?? '', $allowedSourceTypes) ? $item['source_type'] : 'url';
                             $stmt = $db->prepare(
                                 "INSERT INTO photos (id, url, caption, source_type, updated_at)
                                  VALUES (?, ?, ?, ?, NOW())
@@ -273,10 +277,10 @@ class DataCache {
                                  source_type = VALUES(source_type), updated_at = NOW()"
                             );
                             $stmt->execute([
-                                $item['id'],
-                                $item['url'],
-                                $item['caption'] ?? '',
-                                $item['source_type'] ?? 'url'
+                                max(1, min(65535, intval($item['id'] ?? 0))),
+                                mb_substr($item['url'] ?? '', 0, 500),
+                                mb_substr($item['caption'] ?? '', 0, 200),
+                                $sourceType
                             ]);
                         }
                     }
@@ -285,15 +289,17 @@ class DataCache {
 
             case 'music':
                 if ($value !== null) {
+                    $allowedSourceTypes = ['url', 'local'];
+                    $sourceType = in_array($value['source_type'] ?? '', $allowedSourceTypes) ? $value['source_type'] : 'url';
                     $stmt = $db->prepare(
                         "UPDATE music SET source_type = ?, source_url = ?, backup_url = ?, title = ?, artist = ?, updated_at = NOW() WHERE id = 1"
                     );
                     $stmt->execute([
-                        $value['source_type'] ?? 'url',
-                        $value['source_url'] ?? '',
-                        $value['backup_url'] ?? '',
-                        $value['title'] ?? '',
-                        $value['artist'] ?? ''
+                        $sourceType,
+                        mb_substr($value['source_url'] ?? '', 0, 500),
+                        mb_substr($value['backup_url'] ?? '', 0, 500),
+                        mb_substr($value['title'] ?? '', 0, 200),
+                        mb_substr($value['artist'] ?? '', 0, 100)
                     ]);
                 }
                 break;

@@ -6,6 +6,7 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/logger.php';
+require_once __DIR__ . '/../includes/RateLimiter.php';
 
 header('Content-Type: application/json');
 
@@ -14,6 +15,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode([
         'success' => false,
         'error' => ['code' => 'METHOD_NOT_ALLOWED', 'message' => '方法不允许']
+    ]);
+    exit;
+}
+
+$clientIp = RateLimiter::getClientIp();
+$identifier = 'verify:' . $clientIp;
+
+if (!RateLimiter::check($identifier)) {
+    http_response_code(429);
+    echo json_encode([
+        'success' => false,
+        'error' => ['code' => 'RATE_LIMITED', 'message' => '请求过于频繁，请稍后再试']
     ]);
     exit;
 }
@@ -33,6 +46,7 @@ if (empty($username) || empty($password)) {
 $result = login($username, $password);
 
 if ($result['success']) {
+    RateLimiter::clear($identifier);
     Logger::audit('User login', ['username' => $username]);
     echo json_encode([
         'success' => true,

@@ -5,7 +5,6 @@
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/auth.php';
-require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/BaseController.php';
 
@@ -25,10 +24,8 @@ class WishlistToggleController extends BaseController {
 
         try {
             $this->requireAuth();
-            $this->validateRequest();
 
-            $data = $this->getJsonInput();
-            $id = intval($data['id'] ?? $_GET['id'] ?? 0);
+            $id = intval($_GET['id'] ?? 0);
 
             if ($id <= 0) {
                 $this->error('无效的ID', 'VALIDATION_ERROR');
