@@ -1,56 +1,27 @@
 # AGENTS.md
 
-## 项目概述
+PHP + MySQL 情侣纪念网站。
 
-这是一个 PHP + MySQL 情侣纪念网站（韩森宁与吕自长），包含前台展示和后台管理功能。
+## 启动
 
-## 技术栈
-
-- **后端**: PHP 8.x (原生，无框架)
-- **数据库**: MySQL (PDO)
-- **前端**: 原生 HTML5/CSS3/JavaScript (ES6+)
-- **会话管理**: PHP Session
-- **安全**: CSRF Token + BCrypt 密码哈希
-
-## 项目结构
-
-```
-/workspace/
-├── index.php              # 前台首页
-├── admin.php             # 后台管理页面
-├── router.php            # PHP内置服务器路由
-├── config.php            # 配置入口
-├── api/                   # RESTful API 接口
-│   ├── anniversaries.php  # 纪念日 CRUD
-│   ├── wishlists.php      # 愿望清单 CRUD
-│   ├── explores.php        # 探索地点 CRUD
-│   ├── photos.php          # 照片管理
-│   ├── music.php           # 音乐设置
-│   ├── couple-info.php     # 情侣信息
-│   ├── admin-*.php         # 管理员认证
-│   ├── data.php            # 获取所有数据
-│   └── export/import.php   # 数据备份
-├── includes/              # 核心模块
-│   ├── BaseController.php  # 基础控制器 (OOP架构)
-│   ├── Validator.php        # 输入验证器
-│   ├── auth.php            # 认证、会话、密码
-│   ├── csrf.php           # CSRF Token
-│   ├── functions.php       # 公共函数
-│   ├── logger.php         # 日志记录
-│   └── crypter.php        # AES加密 (.env密码)
-├── install/               # 安装向导
-└── assets/                # 前端资源
+```bash
+php -S localhost:3000 router.php
 ```
 
-## 架构规范
+## 架构
 
-### API 设计模式
-- 使用 `BaseController` 类，所有 API 控制器继承它
-- 使用 `Validator` 类进行输入验证
-- HTTP 方法语义: GET(读取) POST(创建) PUT(更新) DELETE(删除)
-- 统一响应格式: `{ success: bool, data: any, message: string }`
+- **入口**: `index.php` (前台), `admin.php` (后台), `router.php` (路由)
+- **API**: `api/*.php` — RESTful 接口
+  - 标准: `/api/{resource}` → `api/{resource}.php`
+  - 带动作: `/api/{resource}/{id}/{action}` → `api/{resource}-{action}.php`
+- **路由规则** (`router.php`):
+  - `/install/` 或 `/install` → 安装向导
+  - `/admin.php` 或 `/admin` → 后台入口
+  - `/` → 前台首页
+- **核心**: `includes/BaseController.php` (所有 API 控制器继承), `includes/Validator.php`, `includes/functions.php`
 
-### 新增 API 文件应遵循
+## API 设计模式
+
 ```php
 require_once __DIR__ . '/../includes/BaseController.php';
 require_once __DIR__ . '/../includes/Validator.php';
@@ -61,10 +32,11 @@ class XxxController extends BaseController {
     public function handle(): void {
         try {
             match($this->getMethod()) {
-                'GET' => $this->index(),
-                'POST' => $this->create(),
-                // ...
-                default => $this->error('不支持的方法', 'METHOD_NOT_ALLOWED', 405)
+                'GET'    => $this->index(),
+                'POST'   => $this->create(),
+                'PUT'    => $this->update(),
+                'DELETE' => $this->delete(),
+                default  => $this->error('不支持的方法', 'METHOD_NOT_ALLOWED', 405)
             };
         } catch (ValidationException $e) {
             $this->error($e->getMessage(), 'VALIDATION_ERROR');
@@ -78,36 +50,57 @@ $controller = new XxxController();
 $controller->handle();
 ```
 
-## 启动开发服务器
-
-```bash
-php -S localhost:3000 router.php
-```
-
 ## 数据库
 
-- **主机**: `mysql.zichang.eu.org:3306`
-- **数据库**: `love1`
-- **安装**: 删除 `.env` 后访问 `/install/`
+- 主机: `mysql.zichang.eu.org:3306`
+- 库名: `love1`
+- 安装: 删除 `.env` 后访问 `/install/`
 
-## 安全特性
+## 安全
 
-- SQL 预处理语句 (PDO)
-- XSS 防护 (`escapeHtml()`, `escapeJs()`)
-- CSRF 验证 (所有写操作)
-- 密码 BCrypt 哈希
-- 登录锁定 (5次失败 = 15分钟)
-- Session HttpOnly + Secure (HTTPS)
-- 文件上传 MIME 验证 (`finfo_file()`)
+- SQL 预处理 (PDO)
+- XSS: `escapeHtml()`, `escapeJs()`
+- CSRF: 所有写操作需 `X-CSRF-TOKEN` header
+- 密码: BCrypt 哈希，登录锁定 (5次失败=15分钟)
+- Session: HttpOnly + Secure (HTTPS)
 
 ## 密码要求
 
-- 最小长度: 8位
-- 安装向导: `install/index.php`
-- 默认管理员: admin / Admin@12345678
+最小 8 位。默认管理员: `admin / Admin@12345678`
 
 ## 前端缓存
 
 - localStorage key: `siteData`
-- TTL: 5分钟 (300000ms)
-- 后台同步: 60秒间隔
+- TTL: 5分钟，后台 60 秒同步
+
+## 后台性能优化
+
+**重要**：CRUD 操作后不要调用 `loadAllData()` 重新加载全部数据。使用 `admin.js` 中的本地状态更新函数：
+
+- `addToLocalList(type, item)` — 添加
+- `updateInLocalList(type, id, updates)` — 更新
+- `removeFromLocalList(type, id)` — 删除
+- `updateWishlistItem(id, updates)` — 愿望清单状态切换
+
+`loadAllData()` 只在初始化、切换 Tab、同步时调用。
+
+## 前台数据公开
+
+`/api/data` 是公开 API，**不需要**登录认证。前台页面应该可以无认证访问。
+
+## 登录后处理
+
+`handleLogin` 成功后必须设置：
+- `isAdmin = true`
+- `filterTabsByRole()`
+- `adminContainer.style.display = 'block'`
+
+## 导入/导出
+
+- 导出: POST `/api/export`
+- 导入: POST `/api/import`，JSON 结构需包含 `data` 和 `version` 字段
+- 使用 `csrfFetch()` 发送请求
+
+## 账号管理
+
+只有修改当前登录用户的功能（用户名和密码），无添加/删除管理员。
