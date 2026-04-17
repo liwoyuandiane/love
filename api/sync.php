@@ -54,12 +54,13 @@ function handleStatus(): void {
     try {
         $db = getDB();
 
-        $tables = ['anniversaries', 'wishlists', 'explores', 'photos', 'music', 'couple_info'];
+        $allowedTables = ['anniversaries', 'wishlists', 'explores', 'photos', 'music', 'couple_info'];
         $stats = [];
 
-        foreach ($tables as $table) {
+        foreach ($allowedTables as $table) {
             try {
-                $stmt = $db->query("SELECT COUNT(*) as count FROM $table");
+                $stmt = $db->prepare("SELECT COUNT(*) as count FROM `$table`");
+                $stmt->execute();
                 $result = $stmt->fetch();
                 $stats[$table] = [
                     'count' => intval($result['count']),
@@ -68,7 +69,7 @@ function handleStatus(): void {
             } catch (Exception $e) {
                 $stats[$table] = [
                     'count' => 0,
-                    'status' => 'error: ' . $e->getMessage()
+                    'status' => 'error'
                 ];
             }
         }

@@ -57,6 +57,11 @@ class AnniversaryController extends BaseController {
         $type = $data['type'] ?? 'anniversary';
         $reminderDays = intval($data['reminder_days'] ?? 0);
 
+        $allowedTypes = ['anniversary', 'birthday', 'wedding', 'other'];
+        if (!in_array($type, $allowedTypes)) {
+            $type = 'anniversary';
+        }
+
         $errors = Validator::validate(compact('title', 'date'), [
             'title' => 'required|max:200',
             'date' => 'required|date'
@@ -96,6 +101,11 @@ class AnniversaryController extends BaseController {
         $description = trim($data['description'] ?? '');
         $type = $data['type'] ?? 'anniversary';
         $reminderDays = intval($data['reminder_days'] ?? 0);
+
+        $allowedTypes = ['anniversary', 'birthday', 'wedding', 'other'];
+        if (!in_array($type, $allowedTypes)) {
+            $type = 'anniversary';
+        }
 
         $errors = Validator::validate(compact('title', 'date'), [
             'title' => 'required|max:200',

@@ -97,6 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function syncData() {
         try {
             const res = await fetch(`${API_BASE}/data`);
+            if (res.status === 401) return;
             const result = await res.json();
             if (result.success) {
                 const newData = result.data;
@@ -117,53 +118,52 @@ document.addEventListener('DOMContentLoaded', function() {
         syncTimer = setInterval(syncData, SYNC_INTERVAL);
     }
 
+    function renderWithData() {
+        initTheme();
+        renderCoupleInfo();
+        renderLists();
+        renderPhotos();
+        renderMusic();
+        startTimer();
+        initBackgroundEffects();
+        initTypewriter();
+        initScrollAnimations();
+        initLightbox();
+        initSurprise();
+        setupMusicPlayer();
+        startBackgroundSync();
+        setTimeout(() => syncData(), 500);
+    }
+
     async function loadSiteData() {
         const cached = loadCachedData();
         if (cached) {
             siteData = cached;
             photos = cached.photos || [];
-            initTheme();
-            renderCoupleInfo();
-            renderLists();
-            renderPhotos();
-            renderMusic();
-            startTimer();
-            initBackgroundEffects();
-            initTypewriter();
-            initScrollAnimations();
-            initLightbox();
-            initSurprise();
-            setupMusicPlayer();
-            startBackgroundSync();
-            setTimeout(() => syncData(), 500);
+            renderWithData();
             return;
         }
 
         try {
             const res = await fetch(`${API_BASE}/data`);
+            if (res.status === 401) {
+                siteData = {};
+                renderWithData();
+                return;
+            }
             const result = await res.json();
             if (result.success) {
                 siteData = result.data;
                 photos = result.data.photos || [];
                 cacheData(result.data);
-                initTheme();
-                renderCoupleInfo();
-                renderLists();
-                renderPhotos();
-                renderMusic();
-                startTimer();
-                initBackgroundEffects();
-                initTypewriter();
-                initScrollAnimations();
-                initLightbox();
-                initSurprise();
-                setupMusicPlayer();
-                startBackgroundSync();
+                renderWithData();
             } else {
-                utils.createToast('数据加载失败', 'error');
+                siteData = {};
+                renderWithData();
             }
         } catch (e) {
-            utils.createToast('网络连接失败', 'error');
+            siteData = {};
+            renderWithData();
         }
     }
 
@@ -273,9 +273,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderPhotos() {
         const grid = $('photos-grid');
         if (!photos.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-images"></i><p>暂无照片</p></div>'; return; }
+        const isValidUrl = url => {
+            if (!url) return false;
+            try {
+                const parsed = new URL(url);
+                return ['http:', 'https:'].includes(parsed.protocol);
+            } catch { return false; }
+        };
+        const safeUrl = url => isValidUrl(url) ? url : '';
         grid.innerHTML = photos.map((photo, i) => `
             <div class="photo-card" data-index="${i}" onclick="openLightbox(${i})" style="animation-delay:${i*0.05}s">
-                <img src="${escape(photo.url)}" alt="${escape(photo.caption || '')}" loading="lazy" onerror="handleImageError(this,'${escape(photo.url)}')" data-url="${escape(photo.url)}">
+                <img src="${safeUrl(photo.url)}" alt="${escape(photo.caption || '')}" loading="lazy" onerror="handleImageError(this,'${escape(safeUrl(photo.url))}')" data-url="${escape(safeUrl(photo.url))}">
                 <div class="photo-overlay"><p class="photo-caption">${escape(photo.caption || '')}</p></div>
                 <button class="photo-retry-btn" onclick="retryImage(this)" style="display:none" title="重试加载"><i class="fas fa-redo"></i></button>
             </div>`).join('');
@@ -298,9 +306,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!siteData?.music) return;
         const { source_url, backup_url, title, artist } = siteData.music;
         const audio = $('love-song');
-        audio.dataset.primaryUrl = source_url;
-        audio.dataset.backupUrl = backup_url || '';
-        audio.src = source_url;
+        const isValidUrl = url => {
+            if (!url) return false;
+            try {
+                const parsed = new URL(url);
+                return ['http:', 'https:'].includes(parsed.protocol);
+            } catch { return false; }
+        };
+        const safeUrl = url => isValidUrl(url) ? url : '';
+        audio.dataset.primaryUrl = safeUrl(source_url);
+        audio.dataset.backupUrl = safeUrl(backup_url) || '';
+        audio.src = safeUrl(source_url);
         audio.load();
         $('music-title').textContent = title || '音乐';
         $('music-artist').textContent = artist || '';
@@ -415,8 +431,16 @@ document.addEventListener('DOMContentLoaded', function() {
     window.openLightbox = function(idx) {
         if (!photos.length) return;
         currentPhotoIndex = idx;
-        $('lightbox-img').src = photos[idx].url;
-        $('lightbox-caption').textContent = photos[idx].caption || '';
+        const photo = photos[idx];
+        const isValidUrl = url => {
+            if (!url) return false;
+            try {
+                const parsed = new URL(url);
+                return ['http:', 'https:'].includes(parsed.protocol);
+            } catch { return false; }
+        };
+        $('lightbox-img').src = isValidUrl(photo.url) ? photo.url : '';
+        $('lightbox-caption').textContent = photo.caption || '';
         $('lightbox').classList.add('active');
         document.body.style.overflow = 'hidden';
     };
@@ -428,8 +452,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function navigateLightbox(dir) {
         currentPhotoIndex = (currentPhotoIndex + dir + photos.length) % photos.length;
-        $('lightbox-img').src = photos[currentPhotoIndex].url;
-        $('lightbox-caption').textContent = photos[currentPhotoIndex].caption || '';
+        const photo = photos[currentPhotoIndex];
+        const isValidUrl = url => {
+            if (!url) return false;
+            try {
+                const parsed = new URL(url);
+                return ['http:', 'https:'].includes(parsed.protocol);
+            } catch { return false; }
+        };
+        $('lightbox-img').src = isValidUrl(photo.url) ? photo.url : '';
+        $('lightbox-caption').textContent = photo.caption || '';
     }
 
     function initSurprise() {

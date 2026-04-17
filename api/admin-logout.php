@@ -9,8 +9,11 @@ require_once __DIR__ . '/../includes/logger.php';
 
 header('Content-Type: application/json');
 
+ensureSession();
 $username = $_SESSION['user_username'] ?? 'unknown';
-logout();
 
 Logger::audit('User logout', ['username' => $username]);
+
+logout();
+
 echo json_encode(['success' => true]);

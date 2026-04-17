@@ -27,7 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $dsn = "mysql:host=$dbHost;port=$dbPort;charset=utf8mb4";
             $pdo = new PDO($dsn, $dbUser, $dbPass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 5]);
 
-            $stmt = $pdo->query("SHOW DATABASES LIKE '$dbName'");
+            $stmt = $pdo->prepare("SHOW DATABASES LIKE ?");
+            $stmt->execute([$dbName]);
             $exists = $stmt->fetch() !== false;
 
             if ($exists) {
@@ -56,12 +57,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $adminUser = trim($_POST['admin_user'] ?? '');
         $adminPass = trim($_POST['admin_pass'] ?? '');
 
+        $dbHost = preg_replace('/[\r\n]/', '', $dbHost);
+        $dbName = preg_replace('/[\r\n]/', '', $dbName);
+        $dbUser = preg_replace('/[\r\n]/', '', $dbUser);
+        $adminUser = preg_replace('/[\r\n]/', '', $adminUser);
+
         if (empty($dbHost) || empty($dbName) || empty($dbUser) || empty($adminUser) || empty($adminPass)) {
             echo json_encode(['success' => false, 'message' => '请填写所有必填项']);
             exit;
         }
-        if (strlen($adminPass) < 8) {
-            echo json_encode(['success' => false, 'message' => '密码至少8位']);
+        if (strlen($adminPass) < 8 || !preg_match('/[A-Za-z]/', $adminPass) || !preg_match('/[0-9]/', $adminPass)) {
+            echo json_encode(['success' => false, 'message' => '密码至少8位，需包含字母和数字']);
             exit;
         }
 

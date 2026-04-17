@@ -24,12 +24,14 @@ class Logger {
     
     private static function write(string $level, string $message, string $type = 'app'): void {
         self::init();
-        
+
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'CLI';
-        $user = $_SESSION['user_id'] ?? $_SESSION['user_username'] ?? 'guest';
+        $userId = $_SESSION['user_id'] ?? '';
+        $username = $_SESSION['user_username'] ?? '';
+        $user = $userId ?: ($username ?: 'guest');
         $time = date('Y-m-d H:i:s');
-        
-        $logEntry = "[$time] [$level] [IP:$ip] [User:$user] $message" . PHP_EOL;
+
+        $logEntry = "[$time] [$level] [IP:$ip] [User:$user] " . str_replace(["\r", "\n"], ['\\r', '\\n'], $message) . PHP_EOL;
         
         $logFile = match($type) {
             'error' => self::$errorLog,

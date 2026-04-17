@@ -24,6 +24,7 @@ if (isLoggedIn()) {
     $success = true;
     $currentUsername = $_SESSION['user_username'] ?? '';
     $currentUserRole = $_SESSION['user_role'] ?? 'admin';
+    $currentUserId = $_SESSION['user_id'] ?? 0;
 
     require_once __DIR__ . '/includes/db.php';
     $db = getDB();
@@ -75,6 +76,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             </form>
             <p class="login-error" id="loginError">用户名或密码错误</p>
         </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay" style="display:none">
+        <div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i></div>
+        <p>正在加载数据...</p>
     </div>
 
     <div class="admin-container <?php if ($success) echo 'active'; ?>" id="adminContainer" <?php if (!$success) echo 'style="display:none"'; ?>>
@@ -324,38 +330,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             <form id="adminUserForm">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>用户名</label>
-                        <input type="text" class="form-input" id="adminUsername" required maxlength="50" placeholder="新用户名" autocomplete="username">
+                        <label>新用户名</label>
+                        <input type="text" class="form-input" id="adminUsername" required maxlength="50" placeholder="请输入新用户名" autocomplete="username">
                     </div>
                     <div class="form-group">
-                        <label>密码</label>
-                        <input type="password" class="form-input" id="adminPassword" required minlength="8" maxlength="100" placeholder="密码（至少8位）" autocomplete="new-password">
+                        <label>新密码</label>
+                        <input type="password" class="form-input" id="adminPassword" required minlength="8" maxlength="100" placeholder="请输入新密码（至少8位）" autocomplete="new-password">
                     </div>
                 </div>
-                <button type="submit" class="btn btn-success"><i class="fas fa-user-plus"></i> 添加管理员</button>
+                <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> 保存修改</button>
             </form>
-            <table class="data-table">
-                <thead><tr><th>ID</th><th>用户名</th><th>创建时间</th><th>操作</th></tr></thead>
-                <tbody id="adminUserTable">
-                    <?php foreach ($adminUsersList as $user): ?>
-                    <tr>
-                        <td><?php echo $user['id']; ?></td>
-                        <td>
-                            <?php echo htmlspecialchars($user['username']); ?>
-                            <?php if ($user['username'] === $currentUsername): ?>
-                            <span class="badge-current">(当前账号)</span>
-                            <?php endif; ?>
-                        </td>
-                        <td><?php echo $user['created_at']; ?></td>
-                        <td class="actions">
-                            <?php if ($user['username'] !== $currentUsername): ?>
-                            <button class="btn btn-danger btn-sm" onclick="deleteAdminUser(<?php echo $user['id']; ?>)"><i class="fas fa-trash"></i></button>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
         </div>
     </div>
 
@@ -374,6 +358,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <script>
         window.CSRF_TOKEN = '<?php echo CSRF::generate(); ?>';
         window.CURRENT_USER_ROLE = '<?php echo $currentUserRole; ?>';
+        window.CURRENT_USER_ID = <?php echo intval($currentUserId); ?>;
         window.IS_ADMIN = <?php echo $currentUserRole === 'admin' ? 'true' : 'false'; ?>;
     </script>
     <script src="/assets/js/utils.js"></script>

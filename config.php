@@ -4,6 +4,13 @@
  * 所有配置从 .env 加载
  */
 
+// 安全 headers
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('X-XSS-Protection: 1; mode=block');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; media-src 'self' https:;");
+
 // 加载环境变量
 $envFile = __DIR__ . '/.env';
 if (file_exists($envFile)) {
