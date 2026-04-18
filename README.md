@@ -33,12 +33,13 @@
 ├── .env                   # 环境变量（安装后生成）
 ├── .htaccess              # Apache 配置（自动加载）
 ├── nginx.conf             # Nginx 配置（手动加载）
-├── manifest.json          # PWA 清单
 ├── assets/
 │   ├── css/              # 样式文件
 │   ├── js/               # JavaScript 文件
 │   ├── fonts/            # 字体文件
-│   └── uploads/          # 上传文件目录
+│   ├── images/           # 图片资源
+│   ├── uploads/          # 上传文件目录
+│   └── manifest.json     # PWA 清单
 ├── api/                   # API 接口
 │   ├── data.php          # 数据 API
 │   ├── anniversaries.php # 纪念日 API
@@ -46,15 +47,18 @@
 │   ├── explores.php      # 探索地点 API
 │   ├── photos.php        # 照片 API
 │   ├── music.php         # 音乐 API
-│   ├── auth.php          # 认证 API
+│   ├── login.php         # 登录认证 API
 │   └── ...
 ├── includes/              # 核心类库
+│   ├── auth.php          # 认证模块
 │   ├── BaseController.php
 │   ├── Validator.php
 │   ├── functions.php
 │   └── ...
 ├── install/              # 安装向导
 │   └── index.php
+├── cache/                # 缓存目录
+├── logs/                 # 日志目录
 └── README.md
 ```
 
