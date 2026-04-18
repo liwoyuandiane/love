@@ -1,26 +1,43 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
-    
+
     # API routes with ID (e.g., /api/wishlists/123/toggle)
     RewriteRule ^api/([^/]+)/(\d+)/([^/]+)$ api/$1-$3.php?id=$2 [L,QSA]
-    
+
     # API routes (e.g., /api/wishlists)
     RewriteRule ^api/([^/]+)$ api/$1.php [L,QSA]
-    
+
     # Install route
     RewriteRule ^install/?$ install/index.php [L,QSA]
-    
+
     # Skip static files
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    
+
     # Main entry points
     RewriteRule ^$ index.php [L,QSA]
     RewriteRule ^index\.php$ index.php [L,QSA]
     RewriteRule ^admin\.php$ admin.php [L,QSA]
     RewriteRule ^admin/?$ admin.php [L,QSA]
-    
+
     # Router fallback
     RewriteRule ^(.*)$ router.php [L,QSA]
+</IfModule>
+
+<IfModule mod_headers.c>
+    # Cache static assets for 1 week
+    <FilesMatch "\.(css|js|woff2?|ttf|eot|otf)$">
+        Header set Cache-Control "public, max-age=604800, immutable"
+    </FilesMatch>
+
+    # Cache images for 1 month
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp|svg|ico)$">
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+
+    # Cache fonts for 1 week
+    <FilesMatch "\.(woff2?|ttf|eot|otf)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
 </IfModule>

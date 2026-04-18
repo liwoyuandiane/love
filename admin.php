@@ -97,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             <button class="tab" data-section="backup" data-role="admin"><i class="fas fa-download"></i> <span>备份导出导入</span></button>
             <button class="tab" data-section="settings" data-role="admin"><i class="fas fa-cog"></i> <span>网站设置</span></button>
             <button class="tab" data-section="admin" data-role="admin"><i class="fas fa-user-shield"></i> <span>账号管理</span></button>
+            <button class="tab" data-section="logs" data-role="admin"><i class="fas fa-file-alt"></i> <span>审计日志</span></button>
         </div>
 
         <div class="section active" id="section-couple" data-role="admin">
@@ -365,6 +366,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 </div>
                 <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> 保存修改</button>
             </form>
+        </div>
+
+        <div class="section" id="section-logs" data-role="admin">
+            <div class="section-header">
+                <h2><i class="fas fa-file-alt"></i> 审计日志</h2>
+            </div>
+            <div class="log-filters">
+                <input type="text" class="form-input" id="logSearch" placeholder="搜索日志内容..." style="max-width: 300px;">
+                <select class="form-input" id="logLevel" style="max-width: 150px;">
+                    <option value="">全部级别</option>
+                    <option value="AUDIT">仅 AUDIT</option>
+                </select>
+                <button type="button" class="btn btn-secondary" onclick="loadAuditLogs()"><i class="fas fa-search"></i> 搜索</button>
+                <button type="button" class="btn btn-secondary" onclick="refreshAuditLogs()"><i class="fas fa-redo"></i> 刷新</button>
+            </div>
+            <div class="log-container">
+                <table class="data-table log-table">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>用户</th>
+                            <th>IP</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditLogTable"></tbody>
+                </table>
+            </div>
+            <div class="log-pagination" id="logPagination"></div>
         </div>
     </div>
 

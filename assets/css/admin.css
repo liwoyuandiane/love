@@ -808,12 +808,80 @@
                 padding: 8px 12px;
                 font-size: 0.8rem;
             }
-            
+
             .tab span {
                 display: none;
             }
-            
+
             .photo-grid {
                 grid-template-columns: 1fr;
             }
+        }
+
+        .log-filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .log-container {
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 1px solid var(--card-border);
+            overflow: hidden;
+        }
+
+        .log-table {
+            margin: 0;
+        }
+
+        .log-table th {
+            background: rgba(255, 107, 157, 0.15);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .log-table td {
+            font-size: 0.9rem;
+        }
+
+        .log-pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+            border-top: 1px solid var(--card-border);
+        }
+
+        .lockout-timer {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 30px 50px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 2000;
+            border: 2px solid var(--danger);
+            box-shadow: 0 0 40px rgba(255, 107, 107, 0.3);
+        }
+
+        .lockout-timer h3 {
+            color: var(--danger);
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .lockout-timer .countdown {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 20px 0;
+        }
+
+        .lockout-timer p {
+            color: var(--text-secondary);
         }
