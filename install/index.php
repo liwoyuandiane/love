@@ -167,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $pdo->exec("INSERT INTO `couple_info` (`id`, `name1`, `name2`, `anniversary`) VALUES (1, '小红', '小明', '2018-06-16')");
             $pdo->exec("INSERT INTO `music` (`id`, `source_type`, `source_url`, `backup_url`, `title`, `artist`) VALUES (1, 'url', 'https://music.163.com/song/media/outer/url?id=2147248772.mp3', 'http://music.163.com/song/media/outer/url?id=2147248772.mp3', '特别的人', '方大同')");
 
-            $hashedPassword = password_hash($adminPass, PASSWORD_BCRYPT, ['cost' => 12]);
+            $hashedPassword = password_hash($adminPass, PASSWORD_BCRYPT, ['cost' => 13]);
             $stmt = $pdo->prepare("INSERT INTO `admin_users` (`username`, `password`, `role`) VALUES (?, ?, 'admin')");
             $stmt->execute([$adminUser, $hashedPassword]);
 
