@@ -26,7 +26,7 @@ ensureSession();
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="专属空间">
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="/assets/manifest.json">
     <link rel="stylesheet" href="/assets/css/fonts.css">
     <link rel="stylesheet" href="/assets/css/fontawesome.css">
     <link rel="stylesheet" href="/assets/css/style.css">
