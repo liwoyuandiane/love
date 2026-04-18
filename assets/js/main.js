@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let timerInterval = null;
     let currentPhotoIndex = 0;
     let photos = [];
+    let lastDataHash = null;
 
     const LOVE_QUOTES = [
         "愿得一人心，白首不相离","情不知所起，一往而深","入目无他人，四下皆是你",
@@ -109,9 +110,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await res.json();
             if (result.success) {
                 const newData = result.data;
-                if (JSON.stringify(newData) !== JSON.stringify(siteData)) {
+                const newHash = JSON.stringify(newData);
+                if (newHash !== lastDataHash) {
                     siteData = newData;
                     photos = newData.photos || [];
+                    lastDataHash = newHash;
                     cacheData(newData);
                     renderLists();
                     renderPhotos();
@@ -145,14 +148,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function loadSiteData() {
-        const cached = loadCachedData();
-        if (cached) {
-            siteData = cached;
-            photos = cached.photos || [];
-            renderWithData();
-            return;
-        }
-
         try {
             const res = await fetch(`${API_BASE}/data`);
             if (res.status === 401) {
@@ -162,17 +157,29 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             const result = await res.json();
             if (result.success) {
-                siteData = result.data;
-                photos = result.data.photos || [];
-                cacheData(result.data);
-                renderWithData();
+                const newData = result.data;
+                const newHash = JSON.stringify(newData);
+                if (newHash !== lastDataHash) {
+                    siteData = newData;
+                    photos = newData.photos || [];
+                    lastDataHash = newHash;
+                    cacheData(newData);
+                    renderWithData();
+                }
             } else {
                 siteData = {};
                 renderWithData();
             }
         } catch (e) {
-            siteData = {};
-            renderWithData();
+            const cached = loadCachedData();
+            if (cached) {
+                siteData = cached;
+                photos = cached.photos || [];
+                renderWithData();
+            } else {
+                siteData = {};
+                renderWithData();
+            }
         }
     }
 
