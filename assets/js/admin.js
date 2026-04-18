@@ -168,9 +168,8 @@ const showLockoutTimer = minutes => {
 
 const loadAllData = async (showError = true) => {
     try {
-        const [dataRes, adminRes, statusRes] = await Promise.all([
+        const [dataRes, statusRes] = await Promise.all([
             csrfFetch(`${API_BASE}/data`, { credentials: 'include' }),
-            csrfFetch(`${API_BASE}/admin-users`, { credentials: 'include' }),
             csrfFetch(`${API_BASE}/admin-status`, { credentials: 'include' })
         ]);
 
@@ -179,10 +178,6 @@ const loadAllData = async (showError = true) => {
         if (dataRes.ok) {
             const data = await dataRes.json();
             if (data.success) siteData = data.data;
-        }
-        if (adminRes.ok) {
-            const admin = await adminRes.json();
-            if (admin.success) window.adminUsers = admin.data;
         }
         if (statusRes.ok) {
             const status = await statusRes.json();
