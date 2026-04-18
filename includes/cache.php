@@ -12,6 +12,7 @@ class Cache {
         if (!is_dir(self::$cacheDir)) {
             mkdir(self::$cacheDir, 0755, true);
         }
+        @chmod(self::$cacheDir, 0755);
     }
 
     public static function get(string $key, int $ttl = null): mixed {
