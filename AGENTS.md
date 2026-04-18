@@ -104,3 +104,37 @@ $controller->handle();
 ## 账号管理
 
 只有修改当前登录用户的功能（用户名和密码），无添加/删除管理员。
+
+## 部署配置
+
+### 1Panel/Nginx 部署
+
+在 1Panel 网站配置中添加伪静态规则（或 include nginx.conf）：
+
+```nginx
+location / {
+    try_files $uri $uri/ /router.php?$query_string;
+}
+
+location ~ \.php$ {
+    try_files $uri =404;
+    fastcgi_pass unix:/tmp/php-cgi-85.sock;
+    fastcgi_index index.php;
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+}
+```
+
+注意：`fastcgi_pass` 路径根据 PHP 版本调整：
+- PHP 7.4: `/tmp/php-cgi-74.sock`
+- PHP 8.0: `/tmp/php-cgi-80.sock`
+- PHP 8.2: `/tmp/php-cgi-82.sock`
+- PHP 8.5: `/tmp/php-cgi-85.sock`
+
+### Apache 部署
+
+项目自带 `.htaccess`，Apache 会自动加载，无需额外配置。
+
+### PHP 要求
+
+必须安装 `pdo_mysql` 扩展，否则安装时会报 "could not find driver" 错误。
