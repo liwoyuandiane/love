@@ -6,6 +6,7 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/logger.php';
 require_once __DIR__ . '/../includes/RateLimiter.php';
 
 header('Content-Type: application/json');
@@ -20,7 +21,6 @@ if ($method === 'POST') {
         $identifier = 'login:' . $clientIp;
 
         if (!RateLimiter::check($identifier)) {
-            $remaining = RateLimiter::getRemainingAttempts($identifier);
             http_response_code(429);
             jsonResponse(false, null, '请求过于频繁，请稍后再试', 'RATE_LIMITED');
         }
@@ -33,13 +33,19 @@ if ($method === 'POST') {
             jsonResponse(false, null, '请填写用户名和密码', 'VALIDATION_ERROR');
         }
 
-        $result = login($username, $password);
+        try {
+            $result = login($username, $password);
 
-        if ($result['success']) {
-            RateLimiter::clear($identifier);
-            jsonResponse(true, ['username' => $_SESSION['user_username']], '登录成功');
-        } else {
-            jsonResponse(false, null, $result['message'], 'AUTH_FAILED');
+            if ($result['success']) {
+                RateLimiter::clear($identifier);
+                jsonResponse(true, ['username' => $_SESSION['user_username']], '登录成功');
+            } else {
+                jsonResponse(false, null, $result['message'], 'AUTH_FAILED');
+            }
+        } catch (Exception $e) {
+            Logger::error('Login error: ' . $e->getMessage());
+            http_response_code(500);
+            jsonResponse(false, null, '登录失败', 'SERVER_ERROR');
         }
     } elseif ($action === 'logout') {
         logout();
@@ -53,15 +59,9 @@ if ($method === 'POST') {
     }
 } elseif ($method === 'GET') {
     if (isLoggedIn()) {
-        echo json_encode([
-            'success' => true,
-            'data' => ['username' => $_SESSION['user_username']]
-        ]);
+        jsonResponse(true, ['username' => $_SESSION['user_username']]);
     } else {
         http_response_code(401);
-        echo json_encode([
-            'success' => false,
-            'error' => ['code' => 'UNAUTHORIZED', 'message' => '未登录']
-        ]);
+        jsonResponse(false, null, '未登录', 'UNAUTHORIZED');
     }
 }
