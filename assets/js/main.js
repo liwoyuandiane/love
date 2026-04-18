@@ -121,6 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderWithData() {
         initTheme();
         renderCoupleInfo();
+        renderFooterIcp();
         renderLists();
         renderPhotos();
         renderMusic();
@@ -182,6 +183,28 @@ document.addEventListener('DOMContentLoaded', function() {
             fill('days-counter', days);
             renderMilestoneBadge(days);
         }
+    }
+
+    function renderFooterIcp() {
+        if (!siteData?.settings) return;
+        const { icp_code, police_record_code, site_name } = siteData.settings;
+        const footerIcp = $('footer-icp');
+
+        if (site_name) {
+            document.title = site_name + ' - 我们的专属空间';
+        }
+
+        if (!footerIcp) return;
+
+        let icpHtml = '';
+        if (icp_code) {
+            icpHtml += `<a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" style="color: inherit;">${icp_code}</a>`;
+        }
+        if (police_record_code) {
+            if (icpHtml) icpHtml += ' | ';
+            icpHtml += `<a href="https://www.beian.gov.cn/" target="_blank" rel="noopener" style="color: inherit;">${police_record_code}</a>`;
+        }
+        footerIcp.innerHTML = icpHtml;
     }
 
     function renderMilestoneBadge(days) {

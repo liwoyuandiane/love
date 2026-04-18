@@ -138,6 +138,7 @@ if (!file_exists($envFile)) {
             <div class="footer-quote">
                 真正的爱情故事永远不会结束，因为它们在心中永存。
             </div>
+            <div class="footer-icp" id="footer-icp" style="margin-top: 10px; font-size: 0.8rem; color: rgba(255,255,255,0.5);"></div>
         </footer>
     </div>
 

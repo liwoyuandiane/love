@@ -154,6 +154,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 INDEX `idx_username` (`username`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+            $pdo->exec("CREATE TABLE `site_settings` (
+                `id` INT PRIMARY KEY DEFAULT 1,
+                `icp_code` VARCHAR(100) NOT NULL DEFAULT '',
+                `police_record_code` VARCHAR(100) NOT NULL DEFAULT '',
+                `site_name` VARCHAR(200) NOT NULL DEFAULT '',
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+            $pdo->exec("INSERT INTO `site_settings` (`id`) VALUES (1)");
+
             $pdo->exec("INSERT INTO `couple_info` (`id`, `name1`, `name2`, `anniversary`) VALUES (1, '小红', '小明', '2018-06-16')");
             $pdo->exec("INSERT INTO `music` (`id`, `source_type`, `source_url`, `backup_url`, `title`, `artist`) VALUES (1, 'url', 'https://music.163.com/song/media/outer/url?id=2147248772.mp3', 'http://music.163.com/song/media/outer/url?id=2147248772.mp3', '特别的人', '方大同')");
 
