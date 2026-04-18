@@ -18,18 +18,13 @@ ensureSession();
 $error = '';
 $success = false;
 $currentUsername = '';
-$adminUsersList = [];
+$currentUserId = 0;
 
 if (isLoggedIn()) {
     $success = true;
     $currentUsername = $_SESSION['user_username'] ?? '';
     $currentUserRole = $_SESSION['user_role'] ?? 'admin';
     $currentUserId = $_SESSION['user_id'] ?? 0;
-
-    require_once __DIR__ . '/includes/db.php';
-    $db = getDB();
-    $stmt = $db->query("SELECT id, username, role, created_at FROM admin_users ORDER BY created_at DESC");
-    $adminUsersList = $stmt->fetchAll();
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
