@@ -44,6 +44,9 @@ try {
     $stmt = $db->query("SELECT id, source_type, source_url, backup_url, title, artist, updated_at FROM music WHERE id = 1");
     $music = $stmt->fetch();
 
+    $stmt = $db->query("SELECT icp_code, police_record_code, site_name, updated_at FROM site_settings WHERE id = 1");
+    $siteSettings = $stmt->fetch();
+
     $exportData = [
         'exportDate' => date('c'),
         'version' => '2.0.0',
@@ -53,7 +56,8 @@ try {
             'wishlists' => $wishlists,
             'explores' => $explores,
             'photos' => $photos,
-            'music' => $music
+            'music' => $music,
+            'siteSettings' => $siteSettings
         ]
     ];
 

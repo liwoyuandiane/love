@@ -26,9 +26,9 @@ class Logger {
         self::init();
 
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'CLI';
-        $userId = $_SESSION['user_id'] ?? '';
+        $userId = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
         $username = $_SESSION['user_username'] ?? '';
-        $user = $userId ?: ($username ?: 'guest');
+        $user = $userId > 0 ? $userId : ($username ?: 'guest');
         $time = date('Y-m-d H:i:s');
 
         $logEntry = "[$time] [$level] [IP:$ip] [User:$user] " . str_replace(["\r", "\n"], ['\\r', '\\n'], $message) . PHP_EOL;

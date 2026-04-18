@@ -70,6 +70,7 @@ class AdminUserController extends BaseController {
             $hashedPassword = hashPassword($password);
             $stmt = $this->db->prepare("UPDATE admin_users SET password = ? WHERE id = ?");
             $stmt->execute([$hashedPassword, $currentUserId]);
+            session_regenerate_id(true);
         }
 
         Logger::audit('Update current user', ['user_id' => $currentUserId]);
