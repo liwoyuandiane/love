@@ -593,6 +593,7 @@ const switchSection = section => {
     currentSection = section;
     $$('.tab').forEach(tab => tab.classList.toggle('active', tab.dataset.section === section));
     $$('.section').forEach(sec => sec.classList.toggle('active', sec.id === `section-${section}`));
+    if (section === 'logs') loadAuditLogs(1);
 };
 
 window.showToast = (message, type = 'success') => {
@@ -668,9 +669,3 @@ const renderLogPagination = data => {
 
 $('logSearch')?.addEventListener('keypress', e => { if (e.key === 'Enter') { e.preventDefault(); loadAuditLogs(1); } });
 $('logLevel')?.addEventListener('change', () => loadAuditLogs(1));
-
-const originalSwitchSection = switchSection;
-switchSection = section => {
-    originalSwitchSection(section);
-    if (section === 'logs') loadAuditLogs(1);
-};

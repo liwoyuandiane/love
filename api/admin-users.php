@@ -9,7 +9,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/BaseController.php';
-require_once __DIR__ . '/Validator.php';
+require_once __DIR__ . '/../includes/Validator.php';
 
 class AdminUserController extends BaseController {
     private PDO $db;
