@@ -20,6 +20,7 @@ class Logger {
         if (!is_dir(self::$logDir)) {
             mkdir(self::$logDir, 0755, true);
         }
+        @chmod(self::$logDir, 0755);
     }
     
     private static function write(string $level, string $message, string $type = 'app'): void {

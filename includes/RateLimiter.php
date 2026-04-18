@@ -60,6 +60,7 @@ class RateLimiter {
         if (!is_dir($cacheDir)) {
             mkdir($cacheDir, 0755, true);
         }
+        @chmod($cacheDir, 0755);
 
         $file = $cacheDir . '/' . md5($identifier) . '.json';
         $lockFile = $file . '.lock';

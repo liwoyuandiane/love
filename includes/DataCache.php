@@ -22,6 +22,7 @@ class DataCache {
         if (!is_dir(self::$cacheDir)) {
             mkdir(self::$cacheDir, 0755, true);
         }
+        @chmod(self::$cacheDir, 0755);
     }
 
     public static function getData(string $key, callable $fetcher = null): ?array {

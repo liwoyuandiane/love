@@ -26,11 +26,19 @@ try {
 }
 
 $cacheDir = dirname(__DIR__) . '/cache';
+if (!is_dir($cacheDir)) {
+    mkdir($cacheDir, 0755, true);
+}
+@chmod($cacheDir, 0755);
 $health['checks']['cache'] = is_dir($cacheDir) && is_writable($cacheDir)
     ? ['status' => 'ok']
     : ['status' => 'warning', 'message' => '缓存目录不可写'];
 
 $logsDir = dirname(__DIR__) . '/logs';
+if (!is_dir($logsDir)) {
+    mkdir($logsDir, 0755, true);
+}
+@chmod($logsDir, 0755);
 $health['checks']['logs'] = is_dir($logsDir) && is_writable($logsDir)
     ? ['status' => 'ok']
     : ['status' => 'warning', 'message' => '日志目录不可写'];
