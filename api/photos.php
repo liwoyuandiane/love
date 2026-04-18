@@ -9,6 +9,7 @@ require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/BaseController.php';
 require_once __DIR__ . '/../includes/Validator.php';
+require_once __DIR__ . '/../includes/cache.php';
 
 class PhotoController extends BaseController {
     private PDO $db;
@@ -118,6 +119,7 @@ class PhotoController extends BaseController {
         $stmt->execute([$id]);
         $newItem = $stmt->fetch();
 
+        Cache::clear('api_data');
         $this->success($newItem, '上传成功', 201);
     }
 
@@ -162,6 +164,7 @@ class PhotoController extends BaseController {
         $stmt->execute([$id]);
         $newItem = $stmt->fetch();
 
+        Cache::clear('api_data');
         $this->success($newItem, '添加成功', 201);
     }
 
@@ -222,6 +225,7 @@ class PhotoController extends BaseController {
         $stmt = $this->db->prepare("UPDATE photos SET caption = ?, updated_at = NOW() WHERE id = ?");
         $stmt->execute([$caption, $id]);
 
+        Cache::clear('api_data');
         $this->success(null, '更新成功');
     }
 
@@ -256,6 +260,7 @@ class PhotoController extends BaseController {
             $this->error('记录不存在', 'NOT_FOUND', 404);
         }
 
+        Cache::clear('api_data');
         $this->success(null, '删除成功');
     }
 }

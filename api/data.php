@@ -2,19 +2,32 @@
 /**
  * API - 获取所有数据
  *
- * 直接从数据库读取，确保实时数据
+ * 使用文件缓存减少数据库访问
  */
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/logger.php';
+require_once __DIR__ . '/../includes/cache.php';
 
 header('Content-Type: application/json');
 
 ensureSession();
 
 try {
+    $cacheKey = 'api_data';
+    $cached = Cache::get($cacheKey, 300);
+
+    if ($cached) {
+        echo json_encode([
+            'success' => true,
+            'data' => $cached,
+            'cached' => true
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     $db = getDB();
 
     $stmt = $db->query("SELECT id, name1, name2, anniversary, created_at, updated_at FROM couple_info WHERE id = 1");
@@ -35,16 +48,20 @@ try {
     $stmt = $db->query("SELECT source_type, source_url, backup_url, title, artist FROM music WHERE id = 1");
     $music = $stmt->fetch();
 
+    $data = [
+        'coupleInfo' => $coupleInfo,
+        'anniversaries' => $anniversaries,
+        'wishlists' => $wishlists,
+        'explores' => $explores,
+        'photos' => $photos,
+        'music' => $music
+    ];
+
+    Cache::set($cacheKey, $data, 300);
+
     echo json_encode([
         'success' => true,
-        'data' => [
-            'coupleInfo' => $coupleInfo,
-            'anniversaries' => $anniversaries,
-            'wishlists' => $wishlists,
-            'explores' => $explores,
-            'photos' => $photos,
-            'music' => $music
-        ]
+        'data' => $data
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {

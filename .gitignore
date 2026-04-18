@@ -1,0 +1,31 @@
+# Environment
+.env
+.env.*
+.env.local
+
+# Logs
+logs/*.log
+
+# Uploads
+assets/uploads/*
+!assets/uploads/.gitkeep
+
+# Cache
+cache/*
+!cache/.gitkeep
+
+# HAR files
+*.har
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# MonkeyCode
+.monkeycode/

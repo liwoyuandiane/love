@@ -7,6 +7,7 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/cache.php';
 
 if (!isLoggedIn()) {
     http_response_code(401);
@@ -145,7 +146,8 @@ try {
     }
     
     $db->commit();
-    
+
+    Cache::clear('api_data');
     jsonResponse(true, null, '数据导入成功');
     
 } catch (Exception $e) {

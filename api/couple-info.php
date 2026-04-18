@@ -9,6 +9,7 @@ require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/BaseController.php';
 require_once __DIR__ . '/../includes/Validator.php';
+require_once __DIR__ . '/../includes/cache.php';
 
 class CoupleInfoController extends BaseController {
     private PDO $db;
@@ -75,6 +76,7 @@ class CoupleInfoController extends BaseController {
         );
         $stmt->execute([$name1, $name2, $anniversary]);
 
+        Cache::clear('api_data');
         $this->success(null, '保存成功');
     }
 }

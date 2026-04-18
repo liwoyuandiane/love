@@ -9,6 +9,7 @@ require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/BaseController.php';
 require_once __DIR__ . '/../includes/Validator.php';
+require_once __DIR__ . '/../includes/cache.php';
 
 class WishlistController extends BaseController {
     private PDO $db;
@@ -74,6 +75,7 @@ class WishlistController extends BaseController {
         $newItem = $stmt->fetch();
 
         Logger::audit('Create wishlist', ['id' => $id, 'title' => $title]);
+        Cache::clear('api_data');
         $this->success($newItem, '添加成功', 201);
     }
 
@@ -105,6 +107,7 @@ class WishlistController extends BaseController {
         );
         $stmt->execute([$title, $description, $date ?: null, $id]);
 
+        Cache::clear('api_data');
         $this->success(null, '更新成功');
     }
 
@@ -127,6 +130,7 @@ class WishlistController extends BaseController {
         }
 
         Logger::audit('Delete wishlist', ['id' => $id]);
+        Cache::clear('api_data');
         $this->success(null, '删除成功');
     }
 }
