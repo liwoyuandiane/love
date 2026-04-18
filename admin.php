@@ -100,6 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             <button class="tab" data-section="photos"><i class="fas fa-images"></i> <span>记忆墙</span></button>
             <button class="tab" data-section="music"><i class="fas fa-music"></i> <span>音乐设置</span></button>
             <button class="tab" data-section="backup" data-role="admin"><i class="fas fa-download"></i> <span>备份导出导入</span></button>
+            <button class="tab" data-section="settings" data-role="admin"><i class="fas fa-cog"></i> <span>网站设置</span></button>
             <button class="tab" data-section="admin" data-role="admin"><i class="fas fa-user-shield"></i> <span>账号管理</span></button>
         </div>
 
@@ -318,6 +319,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this.files[0])">
                 </div>
             </div>
+        </div>
+
+        <div class="section" id="section-settings" data-role="admin">
+            <div class="section-header">
+                <h2><i class="fas fa-cog"></i> 网站设置</h2>
+            </div>
+            <form id="settingsForm">
+                <div class="form-grid">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>网站名称</label>
+                        <input type="text" class="form-input" id="siteName" maxlength="200" placeholder="显示在浏览器标签页">
+                        <small style="color: var(--text-muted); font-size: 0.8rem;">显示在浏览器标签页和首页标题</small>
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>ICP备案号</label>
+                        <input type="text" class="form-input" id="icpCode" maxlength="100" placeholder="如：粤ICP备XXXXXXXX号-X">
+                        <small style="color: var(--text-muted); font-size: 0.8rem;">中国大陆网站必须填写。格式示例：粤ICP备12345678号</small>
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>公安联网备案号（可选）</label>
+                        <input type="text" class="form-input" id="policeRecordCode" maxlength="100" placeholder="如：粤公网安备XXXXXXXXXXXXXXXX号">
+                        <small style="color: var(--text-muted); font-size: 0.8rem;">如果网站需要公安联网备案，请填写</small>
+                    </div>
+                </div>
+                <div style="background: rgba(255,107,157,0.15); border-radius: 12px; padding: 15px; margin-bottom: 20px; border: 1px solid rgba(255,107,157,0.3);">
+                    <p style="color: var(--text-secondary); font-size: 0.85rem;"><i class="fas fa-info-circle" style="color: var(--primary);"></i> 备案信息将显示在网站底部。根据中国大陆法规，经营性和非经营性网站都需进行ICP备案。</p>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存设置</button>
+            </form>
         </div>
 
         <div class="section" id="section-admin" data-role="admin">

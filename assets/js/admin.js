@@ -93,6 +93,7 @@ const setupEventListeners = () => {
         photoUploadForm: handlePhotoUpload,
         photoUrlForm: handlePhotoUrl,
         musicForm: handleMusicSubmit,
+        settingsForm: handleSettingsSubmit,
         adminUserForm: handleAdminUserSubmit
     };
     Object.entries(formHandlers).forEach(([id, handler]) => {
@@ -167,7 +168,41 @@ const loadAllData = async (showError = true) => {
 
 const renderAllSections = () => {
     renderCoupleInfo(); renderAnniversaryTable(); renderWishlistTable(); renderExploreTable();
-    renderPhotoGrid(); renderMusicForm();
+    renderPhotoGrid(); renderMusicForm(); renderSettingsForm();
+};
+
+const renderSettingsForm = () => {
+    if (!siteData?.settings) return;
+    const { icp_code, police_record_code, site_name } = siteData.settings;
+    const icpEl = $('icpCode');
+    const policeEl = $('policeRecordCode');
+    const siteNameEl = $('siteName');
+    if (icpEl) icpEl.value = icp_code || '';
+    if (policeEl) policeEl.value = police_record_code || '';
+    if (siteNameEl) siteNameEl.value = site_name || '';
+};
+
+const handleSettingsSubmit = async e => {
+    e.preventDefault();
+    const data = {
+        icp_code: $('icpCode')?.value.trim() || '',
+        police_record_code: $('policeRecordCode')?.value.trim() || '',
+        site_name: $('siteName')?.value.trim() || ''
+    };
+    try {
+        const res = await csrfFetch(`${API_BASE}/settings`, { method: 'PUT', credentials: 'include', body: JSON.stringify(data) });
+        const result = await res.json();
+        if (result.success) {
+            showToast('设置保存成功', 'success');
+            if (siteData?.settings) {
+                siteData.settings.icp_code = data.icp_code;
+                siteData.settings.police_record_code = data.police_record_code;
+                siteData.settings.site_name = data.site_name;
+            }
+        } else {
+            showToast(result.error?.message || '保存失败', 'error');
+        }
+    } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
 };
 
 const addToLocalList = (type, item) => {
