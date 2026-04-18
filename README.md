@@ -17,98 +17,104 @@
 
 ## 环境要求
 
-- PHP 8.0+
+- PHP 8.0+ (推荐 8.2 或 8.5)
 - MySQL 5.7+ 或 8.0+
 - Web 服务器（Apache/Nginx）
-- 支持 PDO 和 pdo_mysql 扩展
+- **必须安装 `pdo_mysql` 扩展**
 
 ## 目录结构
 
 ```
-/                          # 前台入口
-├── index.php              # 前台首页
-├── config.php             # 配置引入
-├── .env.example          # 环境变量模板
+/                          # 项目根目录
+├── index.php              # 前台首页入口
+├── admin.php              # 后台管理入口
+├── router.php             # API 路由（核心）
+├── config.php             # 配置文件引入
+├── .env                   # 环境变量（安装后生成）
+├── .htaccess              # Apache 配置（自动加载）
+├── nginx.conf             # Nginx 配置（手动加载）
+├── manifest.json          # PWA 清单
 ├── assets/
-│   ├── css/style.css     # 前台样式
-│   ├── js/app.js         # 前台脚本
-│   └── images/           # 本地上传图片目录
-├── admin/                 # 后台管理
-│   ├── index.php         # 登录页
-│   ├── dashboard.php     # 仪表盘
-│   ├── couple.php        # 情侣信息
-│   ├── anniversaries.php # 纪念日
-│   ├── wishlists.php     # 愿望清单
-│   ├── explores.php      # 探索地点
-│   ├── memories.php      # 记忆墙
-│   ├── settings.php      # 设置
-│   ├── export.php        # 数据导出
-│   ├── import.php        # 数据导入
-│   └── includes/         # 公共模块
+│   ├── css/              # 样式文件
+│   ├── js/               # JavaScript 文件
+│   ├── fonts/            # 字体文件
+│   └── uploads/          # 上传文件目录
+├── api/                   # API 接口
+│   ├── data.php          # 数据 API
+│   ├── anniversaries.php # 纪念日 API
+│   ├── wishlists*.php    # 愿望清单 API
+│   ├── explores.php      # 探索地点 API
+│   ├── photos.php        # 照片 API
+│   ├── music.php         # 音乐 API
+│   ├── auth.php          # 认证 API
+│   └── ...
+├── includes/              # 核心类库
+│   ├── BaseController.php
+│   ├── Validator.php
+│   ├── functions.php
+│   └── ...
 ├── install/              # 安装向导
-├── sql/schema.sql       # 数据库建表 SQL
+│   └── index.php
 └── README.md
 ```
 
 ## 安装
 
-### 方式一：1Panel PHP 应用部署（推荐）
+### 方式一：1Panel 部署（推荐）
 
-#### 步骤 1：创建 MySQL 数据库
+#### 步骤 1：上传代码
 
-如果你使用远程 MySQL 或 1Panel 上的 MySQL 容器：
+1. 将项目代码上传到 1Panel 网站目录
+2. 确保目录结构包含 `router.php`、`index.php`、`admin.php` 等文件
 
-1. 登录 MySQL：`mysql -u root -p`
-2. 创建数据库：
+#### 步骤 2：配置伪静态
 
-```sql
-CREATE DATABASE love_couple CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+**方法 A：直接配置（推荐）**
+
+1. 在 1Panel 中找到你的网站 → **设置** → **伪静态**
+2. 选择「自定义」，添加以下配置：
+
+```nginx
+location / {
+    try_files $uri $uri/ /router.php?$query_string;
+}
+
+location ~ \.php$ {
+    try_files $uri =404;
+    fastcgi_pass unix:/tmp/php-cgi-85.sock;
+    fastcgi_index index.php;
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+}
 ```
 
-#### 步骤 2：在 1Panel 中创建 PHP 应用
+**方法 B：包含项目中的 nginx.conf**
 
-1. 登录 1Panel 面板
-2. 进入「应用商店」→ 搜索「PHP」
-3. 选择「PHP」应用，点击「安装」
-4. 配置：
-   - 应用名称：`love-couple`
-   - 容器名称：`love-couple`
-   - 端口：选择自定义端口（如 8080）
-   - 网站根目录：`/opt/love-couple`（或其他路径）
-   - PHP 版本：选择 8.x
+在伪静态中添加一行：
+```nginx
+include /你的网站目录/nginx.conf;
+```
 
-5. 点击「确认」等待创建完成
+#### 步骤 3：确认 PHP 版本
 
-#### 步骤 3：上传代码
+确保 1Panel 中网站的 PHP 版本为 8.x（推荐 8.2 或 8.5）。
 
-1. 将项目代码打包上传到 `/opt/love-couple` 目录
-2. 解压并确保目录结构正确
+> **注意**：`fastcgi_pass` 的 socket 路径根据 PHP 版本调整：
+> - PHP 7.4: `/tmp/php-cgi-74.sock`
+> - PHP 8.0: `/tmp/php-cgi-80.sock`
+> - PHP 8.2: `/tmp/php-cgi-82.sock`
+> - PHP 8.5: `/tmp/php-cgi-85.sock`
 
-#### 步骤 4：配置网站
+#### 步骤 4：访问安装向导
 
-1. 在 1Panel 中进入「网站」→「PHP站点」
-2. 点击「创建」：
-   - 主域名：填写你的域名
-   - 备注：情侣纪念网站
-   - 应用：选择刚才创建的 PHP 应用
-   - 伪静态规则：选择 `WordPress` 或自定义
+1. 打开浏览器访问 `http://你的域名/install/`
+2. 填写数据库信息和管理员账号
+3. 点击「开始安装」
 
-#### 步骤 5：访问安装向导
+#### 步骤 5：访问后台
 
-1. 打开浏览器访问 `http://你的域名/install`
-2. 填写数据库信息：
-   - 数据库主机：远程 MySQL 的 IP:端口
-   - 数据库名称：`love_couple`
-   - 数据库用户名：你的数据库用户名
-   - 数据库密码：你的数据库密码
-3. 填写管理员账号信息
-4. 点击「开始安装」
-
-#### 步骤 6：访问后台
-
-1. 安装完成后访问 `http://你的域名/admin`
-2. 使用刚才创建的管理员账号登录
-3. 开始管理你的情侣网站
+1. 安装完成后访问 `http://你的域名/admin.php`
+2. 使用创建的管理员账号登录
 
 ---
 
@@ -123,10 +129,10 @@ server {
     listen 80;
     server_name your-domain.com;
     root /var/www/love-couple;
-    index index.php;
+    index index.php router.php;
 
     location / {
-        try_files $uri $uri/ /index.php?$query_string;
+        try_files $uri $uri/ /router.php?$query_string;
     }
 
     location ~ \.php$ {
@@ -141,18 +147,11 @@ server {
 }
 ```
 
-**Apache (.htaccess)：**
-
-```apache
-RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ index.php?/$1 [L]
-```
+**Apache**：`.htaccess` 文件已在项目中，使用 `RewriteBase /` 并支持所有路由。
 
 #### 2. 访问安装向导
 
-访问 `http://your-domain.com/install` 完成安装。
+访问 `http://your-domain.com/install/` 完成安装。
 
 ---
 
@@ -231,6 +230,13 @@ location ~ /\.env {
 
 ## 常见问题
 
+### Q: 安装页面提示"could not find driver"
+
+A: PHP 未安装 `pdo_mysql` 扩展。在 1Panel 中：
+1. 找到 PHP 应用 → **设置** → **扩展**
+2. 安装 `pdo` 和 `pdo_mysql` 扩展
+3. 重启 PHP 服务
+
 ### Q: 安装页面提示"数据库连接失败"
 
 A: 请检查：
@@ -239,10 +245,16 @@ A: 请检查：
 3. 数据库是否允许远程连接
 4. 防火墙是否开放了数据库端口
 
+### Q: 安装完成后前台/后台显示 404
+
+A: Web 服务器未正确配置路由。需要配置伪静态规则让所有请求指向 `router.php`：
+- Nginx：使用上面提供的 `try_files $uri $uri/ /router.php?$query_string;`
+- Apache：项目已自带 `.htaccess`，确保 AllowOverride 开启
+
 ### Q: 图片无法上传
 
 A: 请检查：
-1. `assets/images` 目录是否有写入权限
+1. `assets/uploads` 目录是否有写入权限
 2. PHP 的 `upload_max_filesize` 配置
 3. Nginx 的 `client_max_body_size` 配置
 
