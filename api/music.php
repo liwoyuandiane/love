@@ -8,6 +8,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/BaseController.php';
+require_once __DIR__ . '/../includes/cache.php';
 
 class MusicController extends BaseController {
     private PDO $db;
@@ -72,6 +73,7 @@ class MusicController extends BaseController {
         );
         $stmt->execute([$sourceType, $sourceUrl, $backupUrl, $title, $artist]);
 
+        Cache::clear('api_data');
         $this->success(null, '保存成功');
     }
 }

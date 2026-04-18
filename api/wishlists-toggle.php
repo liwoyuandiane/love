@@ -7,6 +7,7 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/BaseController.php';
+require_once __DIR__ . '/../includes/cache.php';
 
 class WishlistToggleController extends BaseController {
     private PDO $db;
@@ -45,6 +46,7 @@ class WishlistToggleController extends BaseController {
             $stmt = $this->db->prepare("UPDATE wishlists SET completed = ?, completed_at = ?, updated_at = NOW() WHERE id = ?");
             $stmt->execute([$newCompleted, $completedAt, $id]);
 
+            Cache::clear('api_data');
             $this->success(['id' => $id, 'completed' => $newCompleted, 'completed_at' => $completedAt]);
 
         } catch (Exception $e) {

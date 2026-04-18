@@ -1,74 +1,64 @@
 <?php
 /**
- * 文件缓存工具
+ * 文件缓存类
  */
 
-class FileCache {
+class Cache {
     private static string $cacheDir;
+    private static int $defaultTTL = 300;
 
-    public static function init(string $cacheDir = null): void {
-        if ($cacheDir === null) {
-            $cacheDir = sys_get_temp_dir() . '/love_site_cache';
-        }
-        self::$cacheDir = $cacheDir;
+    public static function init(): void {
+        self::$cacheDir = dirname(__DIR__) . '/cache';
         if (!is_dir(self::$cacheDir)) {
             mkdir(self::$cacheDir, 0755, true);
         }
     }
 
-    public static function get(string $key, int $ttl = 300): ?array {
+    public static function get(string $key, int $ttl = null): mixed {
         self::init();
         $file = self::getFilePath($key);
+        if (!file_exists($file)) return null;
 
-        if (!file_exists($file)) {
-            return null;
-        }
-
+        $ttl = $ttl ?? self::$defaultTTL;
         if (filemtime($file) + $ttl < time()) {
-            unlink($file);
+            @unlink($file);
             return null;
         }
 
         $content = file_get_contents($file);
-        if ($content === false) {
-            return null;
-        }
-
-        $data = json_decode($content, true);
-        return is_array($data) ? $data : null;
+        return $content ? unserialize($content) : null;
     }
 
-    public static function set(string $key, array $data): bool {
+    public static function set(string $key, mixed $value, int $ttl = null): bool {
         self::init();
         $file = self::getFilePath($key);
-        $content = json_encode($data, JSON_UNESCAPED_UNICODE);
-
-        return file_put_contents($file, $content, LOCK_EX) !== false;
+        $data = serialize($value);
+        $result = file_put_contents($file, $data, LOCK_EX);
+        return $result !== false;
     }
 
-    public static function delete(string $key): bool {
+    public static function delete(string $key): void {
         self::init();
         $file = self::getFilePath($key);
-
-        if (!file_exists($file)) {
-            return true;
+        if (file_exists($file)) {
+            @unlink($file);
         }
-
-        return unlink($file);
     }
 
-    public static function clear(): void {
+    public static function clear(string $prefix = ''): void {
         self::init();
-        $files = glob(self::$cacheDir . '/*.cache');
+        if (empty($prefix) || $prefix === '*') {
+            $files = glob(self::$cacheDir . '/*.cache');
+        } else {
+            $prefix = rtrim($prefix, '*');
+            $files = glob(self::$cacheDir . '/' . $prefix . '_*.cache');
+        }
         foreach ($files as $file) {
-            if (is_file($file)) {
-                unlink($file);
-            }
+            if (is_file($file)) @unlink($file);
         }
     }
 
     private static function getFilePath(string $key): string {
-        $hash = md5($key);
-        return self::$cacheDir . '/' . $hash . '.cache';
+        return self::$cacheDir . '/' . $key . '_' . md5($key) . '.cache';
     }
 }
