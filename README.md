@@ -81,7 +81,7 @@ location / {
 
 location ~ \.php$ {
     try_files $uri =404;
-    fastcgi_pass unix:/tmp/php-cgi-85.sock;
+    fastcgi_pass unix:/tmp/php-cgi.sock;
     fastcgi_index index.php;
     include fastcgi_params;
     fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
@@ -99,11 +99,13 @@ include /你的网站目录/nginx.conf;
 
 确保 1Panel 中网站的 PHP 版本为 8.x（推荐 8.2 或 8.5）。
 
-> **注意**：`fastcgi_pass` 的 socket 路径根据 PHP 版本调整：
+> **注意**：如果报 502 错误，需要修改 `fastcgi_pass` 的 socket 路径：
 > - PHP 7.4: `/tmp/php-cgi-74.sock`
 > - PHP 8.0: `/tmp/php-cgi-80.sock`
 > - PHP 8.2: `/tmp/php-cgi-82.sock`
 > - PHP 8.5: `/tmp/php-cgi-85.sock`
+>
+> 如果都不行，在 1Panel PHP 设置中查看实际的 socket 路径。
 
 #### 步骤 4：访问安装向导
 
