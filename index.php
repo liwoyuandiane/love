@@ -9,6 +9,10 @@ if (!file_exists($envFile)) {
     header('Location: /install/');
     exit;
 }
+
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/includes/csrf.php';
+ensureSession();
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -27,6 +31,9 @@ if (!file_exists($envFile)) {
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body>
+    <script>
+        window.CSRF_TOKEN = '<?php echo CSRF::generate(); ?>';
+    </script>
     <a href="/admin.php" class="admin-link"><i class="fas fa-cog"></i> 管理</a>
     <button class="theme-toggle" id="themeToggle" title="切换主题">
         <i class="fas fa-moon"></i>

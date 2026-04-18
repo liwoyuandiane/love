@@ -44,6 +44,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const $$ = sel => document.querySelectorAll(sel);
     const escape = utils.escapeHtml;
 
+    const csrfFetch = async (url, options = {}) => {
+        const headers = { ...options.headers };
+        if (window.CSRF_TOKEN) {
+            headers['X-CSRF-Token'] = window.CSRF_TOKEN;
+        }
+        return fetch(url, { ...options, headers });
+    };
+
     function initTheme() {
         const saved = localStorage.getItem('theme') || 'auto';
         applyTheme(saved);
@@ -270,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.toggleWishlistCompletion = async function(id) {
         try {
-            const res = await fetch(`${API_BASE}/wishlists/${id}/toggle`, { method: 'POST', credentials: 'include' });
+            const res = await csrfFetch(`${API_BASE}/wishlists/${id}/toggle`, { method: 'POST', credentials: 'include' });
             if (res.ok) {
                 const result = await res.json();
                 if (result.success && result.data) {

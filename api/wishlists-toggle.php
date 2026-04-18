@@ -25,6 +25,7 @@ class WishlistToggleController extends BaseController {
 
         try {
             $this->requireAuth();
+            $this->validateRequest();
 
             $id = intval($_GET['id'] ?? 0);
 
