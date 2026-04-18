@@ -24,6 +24,12 @@ let isAdmin = window.IS_ADMIN || false;
 let syncTimer = null;
 const SYNC_INTERVAL = 60000;
 
+const clearFrontendCache = () => {
+    try {
+        localStorage.removeItem('siteData');
+    } catch (e) {}
+};
+
 document.addEventListener('DOMContentLoaded', () => { checkAuthStatus(); setupEventListeners(); });
 
 const checkAuthStatus = async () => {
@@ -220,6 +226,7 @@ const handleSettingsSubmit = async e => {
         const result = await res.json();
         if (result.success) {
             showToast('设置保存成功', 'success');
+            clearFrontendCache();
             if (siteData?.settings) {
                 siteData.settings.icp_code = data.icp_code;
                 siteData.settings.police_record_code = data.police_record_code;
@@ -271,6 +278,7 @@ const handleCoupleSubmit = async e => {
         const result = await res.json();
         if (result.success) {
             showToast('情侣信息更新成功', 'success');
+            clearFrontendCache();
             if (siteData?.coupleInfo) {
                 siteData.coupleInfo.name1 = data.name1;
                 siteData.coupleInfo.name2 = data.name2;
@@ -303,6 +311,7 @@ const handleAnniversarySubmit = async e => {
         const result = await res.json();
         if (result.success) {
             showToast('添加成功', 'success');
+            clearFrontendCache();
             ['anniversaryTitle', 'anniversaryDate', 'anniversaryDesc'].forEach(id => $(id).value = '');
             if (result.data) addToLocalList('anniversaries', result.data);
             renderAnniversaryTable();
@@ -329,6 +338,7 @@ window.toggleWishlistAdmin = async function(id) {
         const res = await csrfFetch(`${API_BASE}/wishlists/${id}/toggle`, { method: 'POST', credentials: 'include' });
         const result = await res.json();
         if (result.success) {
+            clearFrontendCache();
             if (siteData?.wishlists) {
                 const item = siteData.wishlists.find(w => w.id === id);
                 if (item) {
@@ -353,6 +363,7 @@ const handleWishlistSubmit = async e => {
         const result = await res.json();
         if (result.success) {
             showToast('添加成功', 'success');
+            clearFrontendCache();
             ['wishlistTitle', 'wishlistDesc', 'wishlistDate'].forEach(id => $(id).value = '');
             if (result.data) addToLocalList('wishlists', result.data);
             renderWishlistTable();
@@ -379,6 +390,7 @@ const handleExploreSubmit = async e => {
         const result = await res.json();
         if (result.success) {
             showToast('添加成功', 'success');
+            clearFrontendCache();
             ['exploreTitle', 'exploreDesc', 'exploreDate'].forEach(id => $(id).value = '');
             if (result.data) addToLocalList('explores', result.data);
             renderExploreTable();
@@ -417,6 +429,7 @@ const handlePhotoUpload = async e => {
         const result = await res.json();
         if (result.success) {
             showToast('上传成功', 'success');
+            clearFrontendCache();
             fileInput.value = '';
             $('photoCaption').value = '';
             if (result.data) addToLocalList('photos', result.data);
@@ -434,6 +447,7 @@ const handlePhotoUrl = async e => {
         const result = await res.json();
         if (result.success) {
             showToast('添加成功', 'success');
+            clearFrontendCache();
             $('photoUrl').value = '';
             $('photoUrlCaption').value = '';
             if (result.data) addToLocalList('photos', result.data);
@@ -488,6 +502,7 @@ const handleMusicSubmit = async e => {
         const result = await res.json();
         if (result.success) {
             showToast('音乐设置已保存', 'success');
+            clearFrontendCache();
             if (siteData?.music) {
                 Object.assign(siteData.music, data);
             }
@@ -525,6 +540,7 @@ const importData = async file => {
         const result = await res.json();
         if (result.success) {
             showToast('数据导入成功', 'success');
+            clearFrontendCache();
             loadAllData();
         } else {
             showToast(result.error?.message || '导入失败', 'error');
@@ -549,6 +565,7 @@ window.editItem = function(type, id, title, date, description) {
             const result = await res.json();
             if (result.success) {
                 showToast('更新成功', 'success');
+                clearFrontendCache();
                 closeEditModal();
                 updateInLocalList(safeType + 's', id, updateData);
                 if (safeType === 'anniversary') renderAnniversaryTable();
@@ -571,6 +588,7 @@ const deleteItem = async (type, id) => {
         const result = await res.json();
         if (result.success) {
             showToast('删除成功', 'success');
+            clearFrontendCache();
             removeFromLocalList(type === 'photo' ? 'photos' : type + 's', id);
             if (type === 'anniversary') renderAnniversaryTable();
             else if (type === 'wishlist') renderWishlistTable();
@@ -608,6 +626,7 @@ const handleAdminUserSubmit = async e => {
         const result = await res.json();
         if (result.success) {
             showToast('修改成功', 'success');
+            clearFrontendCache();
             $('adminUsername').value = '';
             $('adminPassword').value = '';
         }
