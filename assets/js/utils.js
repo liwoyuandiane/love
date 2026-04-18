@@ -7,12 +7,14 @@ const escapeHtml = text => {
 
 const escapeJs = text => {
     if (!text) return '';
-    return text
+    return String(text)
         .replace(/\\/g, '\\\\')
         .replace(/'/g, "\\'")
         .replace(/"/g, '\\"')
         .replace(/\n/g, '\\n')
-        .replace(/\r/g, '\\r');
+        .replace(/\r/g, '\\r')
+        .replace(/</g, '\\x3C')
+        .replace(/>/g, '\\x3E');
 };
 
 const formatDate = dateStr => {

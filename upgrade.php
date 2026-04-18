@@ -2,9 +2,21 @@
 /**
  * 数据库升级脚本
  * 用于为已安装的网站添加 site_settings 表
+ * 仅允许管理员访问
  */
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/includes/auth.php';
+
+ensureSession();
+
+if (!isAdmin()) {
+    http_response_code(403);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "拒绝访问：仅允许管理员运行此脚本\n";
+    exit;
+}
+
 require_once __DIR__ . '/includes/db.php';
 
 $db = getDB();

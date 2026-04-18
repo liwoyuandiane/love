@@ -596,7 +596,7 @@ const handleAdminUserSubmit = async e => {
     const username = $('adminUsername').value.trim(), password = $('adminPassword').value;
     if (!username && !password) { showToast('请填写用户名或密码', 'warning'); return; }
     try {
-        const res = await csrfFetch(`${API_BASE}/admin-users`, { method: 'PUT', credentials: 'include', body: JSON.stringify({ id: window.CURRENT_USER_ID, username, password }) });
+        const res = await csrfFetch(`${API_BASE}/admin-users`, { method: 'PUT', credentials: 'include', body: JSON.stringify({ id: window.CURRENT_USER_ID, username, password: password || null }) });
         const result = await res.json();
         if (result.success) {
             showToast('修改成功', 'success');
