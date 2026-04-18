@@ -572,31 +572,12 @@ window.showToast = (message, type = 'success') => {
     setTimeout(() => toast.classList.remove('show'), 3000);
 };
 
-const renderAdminUserTable = () => {
-    const tbody = $('adminUserTable');
-    if (!tbody) return;
-    const users = window.adminUsers || [];
-    const currentUser = window.currentUsername || '';
-
-    if (!users.length) { tbody.innerHTML = emptyState('fa-users', '暂无管理员'); return; }
-    tbody.innerHTML = users.map(u => {
-        const isCurrent = u.username === currentUser;
-        return `<tr>
-            <td>${u.id}</td>
-            <td>${utils.escapeHtml(u.username)}${isCurrent ? ' <span class="badge-current">(当前账号)</span>' : ''}</td>
-            <td>${new Date(u.created_at).toLocaleString('zh-CN')}</td>
-            <td class="actions">
-            ${isCurrent ? '' : '<button class="btn btn-danger btn-sm" onclick="deleteAdminUser(' + u.id + ')"><i class="fas fa-trash"></i></button>'}
-            </td></tr>`;
-    }).join('');
-};
-
 const handleAdminUserSubmit = async e => {
     e.preventDefault();
     const username = $('adminUsername').value.trim(), password = $('adminPassword').value;
     if (!username && !password) { showToast('请填写用户名或密码', 'warning'); return; }
     try {
-        const res = await csrfFetch(`${API_BASE}/admin-users`, { method: 'PUT', credentials: 'include', body: JSON.stringify({ id: window.CURRENT_USER_ID, username, password: password || null }) });
+        const res = await csrfFetch(`${API_BASE}/admin-users`, { method: 'PUT', credentials: 'include', body: JSON.stringify({ username, password: password || null }) });
         const result = await res.json();
         if (result.success) {
             showToast('修改成功', 'success');
@@ -604,69 +585,5 @@ const handleAdminUserSubmit = async e => {
             $('adminPassword').value = '';
         }
         else showToast(result.error?.message || '修改失败', 'error');
-    } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
-};
-
-window.showChangePasswordModal = userId => {
-    const modal = $('editModal'), modalTitle = $('editModalTitle'), form = $('editForm');
-    modalTitle.innerHTML = '<i class="fas fa-key"></i> 修改密码';
-    form.innerHTML = `
-        <div class="form-group"><label>新密码（至少8位）</label><input type="password" class="form-input" id="newPassword" required minlength="8" maxlength="100" placeholder="输入新密码"></div>
-        <div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="closeEditModal()">取消</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存</button></div>`;
-    form.onsubmit = async e => {
-        e.preventDefault();
-        const newPassword = $('newPassword').value;
-        try {
-            const res = await csrfFetch(`${API_BASE}/admin-users/${userId}`, { method: 'PUT', credentials: 'include', body: JSON.stringify({ password: newPassword }) });
-            const result = await res.json();
-            if (result.success) { showToast('密码修改成功', 'success'); closeEditModal(); }
-            else showToast(result.error?.message || '修改失败', 'error');
-        } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
-    };
-    modal.classList.add('active');
-};
-
-window.showChangeUsernameModal = (userId, currentUsername) => {
-    const modal = $('editModal'), modalTitle = $('editModalTitle'), form = $('editForm');
-    modalTitle.innerHTML = '<i class="fas fa-user-edit"></i> 修改用户名';
-    form.innerHTML = `
-        <div class="form-group"><label>新用户名</label><input type="text" class="form-input" id="newUsername" required maxlength="50" value="${utils.escapeHtml(currentUsername)}" placeholder="输入新用户名"></div>
-        <div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="closeEditModal()">取消</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存</button></div>`;
-    form.onsubmit = async e => {
-        e.preventDefault();
-        const newUsername = $('newUsername').value.trim();
-        if (!newUsername) { showToast('用户名不能为空', 'error'); return; }
-        try {
-            const res = await csrfFetch(`${API_BASE}/admin-users/${userId}`, { method: 'PUT', credentials: 'include', body: JSON.stringify({ username: newUsername }) });
-            const result = await res.json();
-            if (result.success) {
-                showToast('用户名修改成功', 'success');
-                closeEditModal();
-                if (window.adminUsers) {
-                    const user = window.adminUsers.find(u => u.id === userId);
-                    if (user) user.username = newUsername;
-                }
-                renderAdminUserTable();
-            }
-            else showToast(result.error?.message || '修改失败', 'error');
-        } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
-    };
-    modal.classList.add('active');
-};
-
-const deleteAdminUser = async userId => {
-    if (!confirm('确定要删除这个管理员账号吗？')) return;
-    try {
-        const res = await csrfFetch(`${API_BASE}/admin-users/${userId}`, { method: 'DELETE', credentials: 'include' });
-        const result = await res.json();
-        if (result.success) {
-            showToast('删除成功', 'success');
-            if (window.adminUsers) {
-                const idx = window.adminUsers.findIndex(u => u.id === userId);
-                if (idx !== -1) window.adminUsers.splice(idx, 1);
-            }
-            renderAdminUserTable();
-        }
-        else showToast(result.error?.message || '删除失败', 'error');
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
 };
