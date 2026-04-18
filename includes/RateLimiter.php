@@ -178,12 +178,20 @@ class RateLimiter {
     public static function getClientIp(): string {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
-        if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && isset($_SERVER['HTTP_X_REAL_IP'])) {
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
             $forwardedFor = $_SERVER['HTTP_X_FORWARDED_FOR'];
             $ips = array_map('trim', explode(',', $forwardedFor));
             $firstIp = filter_var($ips[0], FILTER_VALIDATE_IP);
             if ($firstIp !== false) {
                 return $firstIp;
+            }
+        }
+
+        if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+            $realIp = trim($_SERVER['HTTP_X_REAL_IP']);
+            $validatedIp = filter_var($realIp, FILTER_VALIDATE_IP);
+            if ($validatedIp !== false) {
+                return $validatedIp;
             }
         }
 
