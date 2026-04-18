@@ -356,27 +356,34 @@ document.addEventListener('DOMContentLoaded', function() {
     function startTimer() {
         if (!siteData?.coupleInfo) return;
         const [y, mo, d] = siteData.coupleInfo.anniversary.split('T')[0].split('-').map(Number);
-        
-        function update() {
-            const now = new Date();
-            const beijing = new Date(now.getTime() + (now.getTimezoneOffset() + 480) * 60000);
-            let years = beijing.getFullYear() - y;
-            let months = beijing.getMonth() + 1 - mo;
-            let days = beijing.getDate() - d;
-            let hours = beijing.getHours();
-            let mins = beijing.getMinutes();
-            let secs = beijing.getSeconds();
+        const startDate = new Date(y, mo - 1, d, 0, 0, 0);
+        let totalSeconds = Math.floor((Date.now() - startDate.getTime()) / 1000);
+        if (totalSeconds < 0) totalSeconds = 0;
 
-            if (secs < 0) { secs += 60; mins--; }
-            if (mins < 0) { mins += 60; hours--; }
-            if (hours < 0) { hours += 24; days--; }
-            if (days < 0) { days += new Date(beijing.getFullYear(), beijing.getMonth(), 0).getDate(); months--; }
-            if (months < 0) { months += 12; years--; }
-            if (years < 0) years = months = days = hours = mins = secs = 0;
+        const MS_PER_MINUTE = 60;
+        const MS_PER_HOUR = MS_PER_MINUTE * 60;
+        const MS_PER_DAY = MS_PER_HOUR * 24;
+        const MS_PER_MONTH = MS_PER_DAY * 30.44;
+        const MS_PER_YEAR = MS_PER_DAY * 365.25;
+
+        function update() {
+            totalSeconds++;
+            let remaining = totalSeconds;
+
+            const years = Math.floor(remaining / MS_PER_YEAR);
+            remaining -= years * MS_PER_YEAR;
+            const months = Math.floor(remaining / MS_PER_MONTH);
+            remaining -= months * MS_PER_MONTH;
+            const days = Math.floor(remaining / MS_PER_DAY);
+            remaining -= days * MS_PER_DAY;
+            const hours = Math.floor(remaining / MS_PER_HOUR);
+            remaining -= hours * MS_PER_HOUR;
+            const minutes = Math.floor(remaining / MS_PER_MINUTE);
+            const seconds = remaining - minutes * MS_PER_MINUTE;
 
             const set = (id, v) => { const el = $(id); if (el) el.textContent = v };
             set('years', years); set('months', months); set('days', days);
-            set('hours', String(hours).padStart(2,'0')); set('minutes', String(mins).padStart(2,'0')); set('seconds', String(secs).padStart(2,'0'));
+            set('hours', String(hours).padStart(2,'0')); set('minutes', String(minutes).padStart(2,'0')); set('seconds', String(seconds).padStart(2,'0'));
         }
 
         update();

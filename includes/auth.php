@@ -5,7 +5,7 @@
 
 require_once __DIR__ . '/db.php';
 
-define('SALT_ROUNDS', 12);
+define('SALT_ROUNDS', 13);
 define('MAX_LOGIN_ATTEMPTS', 5);
 define('LOCKOUT_DURATION', 15 * 60);
 

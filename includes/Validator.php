@@ -77,9 +77,13 @@ class Validator {
 
     private static function validateDate(string $value, string $field): void {
         if ($value !== '') {
-            $d = DateTime::createFromFormat('Y-m-d', $value);
-            if (!($d && $d->format('Y-m-d') === $value)) {
+            $parts = explode('-', $value);
+            if (count($parts) !== 3) {
                 throw new ValidationException("{$field}不是有效的日期格式");
+            }
+            [$year, $month, $day] = array_map('intval', $parts);
+            if (!checkdate($month, $day, $year)) {
+                throw new ValidationException("{$field}不是有效的日期");
             }
         }
     }

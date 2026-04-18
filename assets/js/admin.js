@@ -131,8 +131,39 @@ const handleLogin = async () => {
             $('loadingOverlay').style.display = 'flex';
             loadAllData();
             startPeriodicSync();
-        } else { showToast(result.error?.message || '登录失败', 'error'); $('passwordInput').value = ''; }
+        } else {
+            const msg = result.error?.message || '登录失败';
+            showToast(msg, 'error');
+            $('passwordInput').value = '';
+            if (msg.includes('锁定')) {
+                const match = msg.match(/(\d+)\s*分钟/);
+                if (match) showLockoutTimer(parseInt(match[1]));
+            }
+        }
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
+};
+
+let lockoutTimerInterval = null;
+const showLockoutTimer = minutes => {
+    if ($('lockoutOverlay')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'lockoutOverlay';
+    overlay.className = 'lockout-timer';
+    overlay.innerHTML = `<h3><i class="fas fa-lock"></i> 账号已锁定</h3><div class="countdown" id="lockoutCountdown">${minutes}</div><p>分钟后自动解除锁定</p>`;
+    document.body.appendChild(overlay);
+    let remaining = minutes * 60;
+    lockoutTimerInterval = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+            clearInterval(lockoutTimerInterval);
+            overlay.remove();
+            showToast('锁定已解除，可以尝试登录', 'success');
+        } else {
+            const m = Math.floor(remaining / 60);
+            const s = remaining % 60;
+            $('lockoutCountdown').textContent = m > 0 ? `${m}:${String(s).padStart(2, '0')}` : s;
+        }
+    }, 1000);
 };
 
 const loadAllData = async (showError = true) => {
@@ -586,4 +617,60 @@ const handleAdminUserSubmit = async e => {
         }
         else showToast(result.error?.message || '修改失败', 'error');
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
+};
+
+let auditLogPage = 1;
+const loadAuditLogs = async (page = 1) => {
+    auditLogPage = page;
+    const search = $('logSearch')?.value.trim() || '';
+    const level = $('logLevel')?.value || '';
+    try {
+        const params = new URLSearchParams({ page, per_page: 50 });
+        if (search) params.append('search', search);
+        if (level) params.append('level', level);
+        const res = await fetch(`${API_BASE}/audit-logs?${params}`, { credentials: 'include' });
+        const result = await res.json();
+        if (result.success) {
+            renderAuditLogTable(result.data.logs);
+            renderLogPagination(result.data);
+        }
+    } catch (e) { console.error('Load audit logs error:', e); }
+};
+
+const refreshAuditLogs = () => loadAuditLogs(auditLogPage);
+
+const renderAuditLogTable = logs => {
+    const tbody = $('auditLogTable');
+    if (!tbody) return;
+    if (!logs.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><i class="fas fa-file-alt"></i><p>暂无日志记录</p></td></tr>';
+        return;
+    }
+    tbody.innerHTML = logs.map(log => `
+        <tr>
+            <td style="white-space:nowrap">${log.time || '-'}</td>
+            <td>${utils.escapeHtml(log.user || '-')}</td>
+            <td style="color:var(--text-muted);font-size:0.85rem">${utils.escapeHtml(log.ip || '-')}</td>
+            <td>${utils.escapeHtml(log.message || '-')}</td>
+        </tr>`).join('');
+};
+
+const renderLogPagination = data => {
+    const container = $('logPagination');
+    if (!container) return;
+    if (data.total_pages <= 1) { container.innerHTML = ''; return; }
+    let html = '';
+    if (data.page > 1) html += `<button class="btn btn-secondary btn-sm" onclick="loadAuditLogs(${data.page - 1})"><i class="fas fa-chevron-left"></i></button>`;
+    html += `<span style="padding:0 15px">第 ${data.page} / ${data.total_pages} 页，共 ${data.total} 条</span>`;
+    if (data.page < data.total_pages) html += `<button class="btn btn-secondary btn-sm" onclick="loadAuditLogs(${data.page + 1})"><i class="fas fa-chevron-right"></i></button>`;
+    container.innerHTML = html;
+};
+
+$('logSearch')?.addEventListener('keypress', e => { if (e.key === 'Enter') { e.preventDefault(); loadAuditLogs(1); } });
+$('logLevel')?.addEventListener('change', () => loadAuditLogs(1));
+
+const originalSwitchSection = switchSection;
+switchSection = section => {
+    originalSwitchSection(section);
+    if (section === 'logs') loadAuditLogs(1);
 };
