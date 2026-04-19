@@ -282,6 +282,8 @@ A: 请检查：
 - 修复导入导出功能支持 timezone 字段
 - 修复 data.php 查询 site_settings 时缺少 timezone 字段
 - 修复前台 ICP 备案信息的 XSS 安全漏洞
+- 修复安装脚本密码写入 .env 时的注入漏洞
+- 修复后台页面 JavaScript 变量 XSS 漏洞
 
 ### v2.0.2
 - 照片卡片统一为 4:3 比例显示
