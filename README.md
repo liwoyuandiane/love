@@ -298,6 +298,10 @@ A: 请检查：
 - admin-status.php 添加 username 转义
 - settings.php 添加 timezone 验证和长度限制
 - music.php 添加 URL 验证和长度限制
+- cache.php 使用 json_decode 替代 unserialize 防止反序列化漏洞
+- admin.php username 输出添加 ENT_QUOTES
+- 删除未使用的 DataCache.php 文件
+- music.php 添加 URL 验证和长度限制
 - wishlists-toggle.php 添加审计日志
 - migrate-role.php 隐藏数据库错误信息
 
