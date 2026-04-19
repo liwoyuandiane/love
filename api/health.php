@@ -48,6 +48,15 @@ $health['checks']['uploads'] = is_dir($uploadDir) && is_writable($uploadDir)
     ? ['status' => 'ok']
     : ['status' => 'warning', 'message' => '上传目录不可写'];
 
+$health['checks']['php'] = [
+    'upload_max_filesize' => ini_get('upload_max_filesize'),
+    'post_max_size' => ini_get('post_max_size'),
+    'memory_limit' => ini_get('memory_limit'),
+    'file_uploads' => ini_get('file_uploads') ? 'on' : 'off',
+    'max_execution_time' => ini_get('max_execution_time'),
+    'config_status' => (ini_get('upload_max_filesize') >= 20 * 1024 * 1024) ? 'ok' : '需要调整'
+];
+
 $uploadsSize = 0;
 if (is_dir($uploadDir)) {
     $files = glob($uploadDir . '/*');
