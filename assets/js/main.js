@@ -213,11 +213,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let icpHtml = '';
         if (icp_code) {
-            icpHtml += `<a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" style="color: inherit;">${icp_code}</a>`;
+            icpHtml += `<a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" style="color: inherit;">${escape(icp_code)}</a>`;
         }
         if (police_record_code) {
             if (icpHtml) icpHtml += ' | ';
-            icpHtml += `<a href="https://www.beian.gov.cn/" target="_blank" rel="noopener" style="color: inherit;">${police_record_code}</a>`;
+            icpHtml += `<a href="https://www.beian.gov.cn/" target="_blank" rel="noopener" style="color: inherit;">${escape(police_record_code)}</a>`;
         }
         footerIcp.innerHTML = icpHtml;
     }
