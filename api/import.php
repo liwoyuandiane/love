@@ -158,6 +158,7 @@ try {
     
     $db->commit();
 
+    Logger::audit('Import data', ['version' => $importData['version'] ?? 'unknown']);
     Cache::clear('api_data');
     jsonResponse(true, null, '数据导入成功');
     
