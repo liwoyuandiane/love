@@ -9,13 +9,16 @@ class RateLimiter {
     private static int $maxAttempts = 5;
     private static int $windowSeconds = 60;
     private static bool $useApcu;
+    private static bool $initialized = false;
 
-    public static function init(): void {
+    private static function ensureInit(): void {
+        if (self::$initialized) return;
         self::$useApcu = extension_loaded('apcu') && apcu_enabled();
+        self::$initialized = true;
     }
 
     public static function check(string $identifier): bool {
-        self::init();
+        self::ensureInit();
 
         $key = 'rl_' . md5($identifier);
         $now = time();
@@ -107,7 +110,7 @@ class RateLimiter {
     }
 
     public static function getRemainingAttempts(string $identifier): int {
-        self::init();
+        self::ensureInit();
 
         $key = 'rl_' . md5($identifier);
         $now = time();
@@ -160,7 +163,7 @@ class RateLimiter {
     }
 
     public static function clear(string $identifier): void {
-        self::init();
+        self::ensureInit();
 
         $key = 'rl_' . md5($identifier);
 

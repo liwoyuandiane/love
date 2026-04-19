@@ -456,8 +456,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <div class="toast" id="toast"></div>
 
     <script>
-        window.CSRF_TOKEN = '<?php echo htmlspecialchars(CSRF::generate(), ENT_QUOTES); ?>';
-        window.CURRENT_USER_ROLE = '<?php echo htmlspecialchars($currentUserRole ?? 'user', ENT_QUOTES); ?>';
+        window.CSRF_TOKEN = <?php echo json_encode(CSRF::generate()); ?>;
+        window.CURRENT_USER_ROLE = <?php echo json_encode($currentUserRole ?? 'user'); ?>;
         window.CURRENT_USER_ID = <?php echo intval($currentUserId); ?>;
         window.IS_ADMIN = <?php echo ($currentUserRole ?? 'user') === 'admin' ? 'true' : 'false'; ?>;
     </script>
