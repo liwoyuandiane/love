@@ -33,7 +33,7 @@ ensureSession();
 </head>
 <body>
     <script>
-        window.CSRF_TOKEN = '<?php echo CSRF::generate(); ?>';
+        window.CSRF_TOKEN = <?php echo json_encode(CSRF::generate()); ?>;
     </script>
     <a href="/admin.php" class="admin-link"><i class="fas fa-cog"></i> 管理</a>
     <button class="theme-toggle" id="themeToggle" title="切换主题">

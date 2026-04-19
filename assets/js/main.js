@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function() {
             { days: 1825, icon: '💖', label: '5周年' },
             { days: 3650, icon: '💕', label: '10周年' }
         ];
-        const m = milestones.find(o => o.days === days);
+        const m = milestones.filter(o => o.days <= days).pop();
         $('milestone-container').innerHTML = m ? `<div class="milestone-badge"><span>${m.icon}</span><span>${m.label}</span></div>` : '';
     }
 
@@ -372,19 +372,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!siteData?.coupleInfo) return;
 
         const timezone = siteData?.settings?.timezone || 'Asia/Shanghai';
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: timezone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
 
         function update() {
             const now = new Date();
-            const formatter = new Intl.DateTimeFormat('en-CA', {
-                timeZone: timezone,
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            });
             const parts = formatter.formatToParts(now);
             const get = (type) => parts.find(p => p.type === type)?.value || '00';
             const years = get('year');
@@ -413,11 +413,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function initBackgroundEffects() {
         const stars = $('stars-container');
-        for (let i = 0; i < 50; i++) {
-            const star = document.createElement('div');
-            star.className = 'star';
-            star.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;--duration:${2+Math.random()*3}s;--delay:${Math.random()*3}s;--opacity:${0.3+Math.random()*0.5}`;
-            stars.appendChild(star);
+        if (!stars.children.length) {
+            for (let i = 0; i < 50; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;--duration:${2+Math.random()*3}s;--delay:${Math.random()*3}s;--opacity:${0.3+Math.random()*0.5}`;
+                stars.appendChild(star);
+            }
         }
 
         const hearts = $('hearts-container');
