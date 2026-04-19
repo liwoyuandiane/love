@@ -114,11 +114,24 @@ const setupEventListeners = () => {
     $('musicUrl')?.addEventListener('input', updateMusicPreview);
     $('localPath')?.addEventListener('input', updateMusicPreview);
     const fileArea = $('fileUploadArea'), photoFile = $('photoFile');
+    const uploadIcon = $('uploadIcon'), uploadText = $('uploadText'), uploadHint = $('uploadHint'), fileNameDisplay = $('fileNameDisplay');
+    const updateFileDisplay = () => {
+        if (photoFile.files.length) {
+            const file = photoFile.files[0];
+            fileNameDisplay.textContent = file.name;
+            fileNameDisplay.style.display = 'block';
+            uploadIcon.className = 'fas fa-check-circle';
+            uploadIcon.style.color = 'var(--success)';
+            uploadText.textContent = '已选择文件';
+            uploadHint.style.display = 'none';
+            fileArea.style.borderColor = 'var(--success)';
+        }
+    };
     fileArea?.addEventListener('click', () => photoFile?.click());
-    photoFile?.addEventListener('change', () => { if (photoFile.files.length) fileArea.style.borderColor = 'var(--success)'; });
+    photoFile?.addEventListener('change', updateFileDisplay);
     fileArea?.addEventListener('dragover', e => { e.preventDefault(); fileArea.style.borderColor = 'var(--primary)'; });
-    fileArea?.addEventListener('dragleave', () => { fileArea.style.borderColor = 'rgba(255, 255, 255, 0.15)'; });
-    fileArea?.addEventListener('drop', e => { e.preventDefault(); fileArea.style.borderColor = 'rgba(255, 255, 255, 0.15)'; if (e.dataTransfer.files.length) photoFile.files = e.dataTransfer.files; });
+    fileArea?.addEventListener('dragleave', () => { if (!photoFile.files.length) fileArea.style.borderColor = 'rgba(255, 255, 255, 0.15)'; });
+    fileArea?.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files.length) { photoFile.files = e.dataTransfer.files; updateFileDisplay(); } else { fileArea.style.borderColor = 'rgba(255, 255, 255, 0.15)'; } });
 };
 
 const handleLogin = async () => {
@@ -433,6 +446,12 @@ const handlePhotoUpload = async e => {
             clearFrontendCache();
             fileInput.value = '';
             $('photoCaption').value = '';
+            const fileNameDisplay = $('fileNameDisplay'), uploadIcon = $('uploadIcon'), uploadText = $('uploadText'), uploadHint = $('uploadHint'), fileArea = $('fileUploadArea');
+            if (fileNameDisplay) { fileNameDisplay.style.display = 'none'; fileNameDisplay.textContent = ''; }
+            if (uploadIcon) { uploadIcon.className = 'fas fa-cloud-upload-alt'; uploadIcon.style.color = ''; }
+            if (uploadText) uploadText.textContent = '点击或拖拽图片到此处上传';
+            if (uploadHint) uploadHint.style.display = '';
+            if (fileArea) fileArea.style.borderColor = 'rgba(255, 255, 255, 0.15)';
             if (result.data) addToLocalList('photos', result.data);
             renderPhotoGrid();
         }
