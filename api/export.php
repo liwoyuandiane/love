@@ -44,7 +44,7 @@ try {
     $stmt = $db->query("SELECT id, source_type, source_url, backup_url, title, artist, updated_at FROM music WHERE id = 1");
     $music = $stmt->fetch();
 
-    $stmt = $db->query("SELECT icp_code, police_record_code, site_name, updated_at FROM site_settings WHERE id = 1");
+    $stmt = $db->query("SELECT icp_code, police_record_code, site_name, timezone, updated_at FROM site_settings WHERE id = 1");
     $siteSettings = $stmt->fetch();
 
     $exportData = [
