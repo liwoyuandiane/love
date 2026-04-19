@@ -45,7 +45,8 @@ class SettingsController extends BaseController {
                 'id' => 1,
                 'icp_code' => '',
                 'police_record_code' => '',
-                'site_name' => ''
+                'site_name' => '',
+                'timezone' => 'Asia/Shanghai'
             ];
         }
 
@@ -61,6 +62,7 @@ class SettingsController extends BaseController {
         $icpCode = trim($data['icp_code'] ?? '');
         $policeRecordCode = trim($data['police_record_code'] ?? '');
         $siteName = trim($data['site_name'] ?? '');
+        $timezone = trim($data['timezone'] ?? 'Asia/Shanghai');
 
         $errors = Validator::validate(compact('icpCode'), [
             'icpCode' => 'max:100'
@@ -71,9 +73,9 @@ class SettingsController extends BaseController {
         }
 
         $stmt = $this->db->prepare(
-            "UPDATE site_settings SET icp_code = ?, police_record_code = ?, site_name = ?, updated_at = NOW() WHERE id = 1"
+            "UPDATE site_settings SET icp_code = ?, police_record_code = ?, site_name = ?, timezone = ?, updated_at = NOW() WHERE id = 1"
         );
-        $stmt->execute([$icpCode, $policeRecordCode, $siteName]);
+        $stmt->execute([$icpCode, $policeRecordCode, $siteName, $timezone]);
 
         Cache::clear('api_data');
         $this->success(null, '保存成功');

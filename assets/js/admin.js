@@ -219,13 +219,15 @@ const renderAllSections = () => {
 
 const renderSettingsForm = () => {
     if (!siteData?.settings) return;
-    const { icp_code, police_record_code, site_name } = siteData.settings;
+    const { icp_code, police_record_code, site_name, timezone } = siteData.settings;
     const icpEl = $('icpCode');
     const policeEl = $('policeRecordCode');
     const siteNameEl = $('siteName');
+    const timezoneEl = $('timezone');
     if (icpEl) icpEl.value = icp_code || '';
     if (policeEl) policeEl.value = police_record_code || '';
     if (siteNameEl) siteNameEl.value = site_name || '';
+    if (timezoneEl) timezoneEl.value = timezone || 'Asia/Shanghai';
 };
 
 const handleSettingsSubmit = async e => {
@@ -233,7 +235,8 @@ const handleSettingsSubmit = async e => {
     const data = {
         icp_code: $('icpCode')?.value.trim() || '',
         police_record_code: $('policeRecordCode')?.value.trim() || '',
-        site_name: $('siteName')?.value.trim() || ''
+        site_name: $('siteName')?.value.trim() || '',
+        timezone: $('timezone')?.value.trim() || 'Asia/Shanghai'
     };
     try {
         const res = await csrfFetch(`${API_BASE}/settings`, { method: 'PUT', credentials: 'include', body: JSON.stringify(data) });
@@ -245,6 +248,7 @@ const handleSettingsSubmit = async e => {
                 siteData.settings.icp_code = data.icp_code;
                 siteData.settings.police_record_code = data.police_record_code;
                 siteData.settings.site_name = data.site_name;
+                siteData.settings.timezone = data.timezone;
             }
         } else {
             showToast(result.error?.message || '保存失败', 'error');
