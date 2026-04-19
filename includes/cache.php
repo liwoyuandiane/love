@@ -6,17 +6,21 @@
 class Cache {
     private static string $cacheDir;
     private static int $defaultTTL = 300;
+    private static bool $initialized = false;
 
-    public static function init(): void {
+    private static function ensureDir(): void {
+        if (self::$initialized) return;
+
         self::$cacheDir = dirname(__DIR__) . '/cache';
         if (!is_dir(self::$cacheDir)) {
             mkdir(self::$cacheDir, 0755, true);
         }
         @chmod(self::$cacheDir, 0755);
+        self::$initialized = true;
     }
 
     public static function get(string $key, int $ttl = null): mixed {
-        self::init();
+        self::ensureDir();
         $file = self::getFilePath($key);
         if (!file_exists($file)) return null;
 
@@ -31,7 +35,7 @@ class Cache {
     }
 
     public static function set(string $key, mixed $value, int $ttl = null): bool {
-        self::init();
+        self::ensureDir();
         $file = self::getFilePath($key);
         $data = json_encode($value, JSON_UNESCAPED_UNICODE);
         $result = file_put_contents($file, $data, LOCK_EX);
@@ -39,7 +43,7 @@ class Cache {
     }
 
     public static function delete(string $key): void {
-        self::init();
+        self::ensureDir();
         $file = self::getFilePath($key);
         if (file_exists($file)) {
             @unlink($file);
@@ -47,7 +51,7 @@ class Cache {
     }
 
     public static function clear(string $prefix = ''): void {
-        self::init();
+        self::ensureDir();
         if (empty($prefix) || $prefix === '*') {
             $files = glob(self::$cacheDir . '/*.cache');
         } else {

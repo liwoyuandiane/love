@@ -57,10 +57,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $adminUser = trim($_POST['admin_user'] ?? '');
         $adminPass = trim($_POST['admin_pass'] ?? '');
 
-        $dbHost = preg_replace('/[\r\n]/', '', $dbHost);
-        $dbName = preg_replace('/[\r\n]/', '', $dbName);
-        $dbUser = preg_replace('/[\r\n]/', '', $dbUser);
-        $adminUser = preg_replace('/[\r\n]/', '', $adminUser);
+        $dbHost = preg_replace('/[\r\n\'\"`;]/', '', $dbHost);
+        $dbName = preg_replace('/[\r\n\'\"`;]/', '', $dbName);
+        $dbUser = preg_replace('/[\r\n\'\"`;]/', '', $dbUser);
+        $adminUser = preg_replace('/[\r\n\'\"`;]/', '', $adminUser);
 
         if (empty($dbHost) || empty($dbName) || empty($dbUser) || empty($adminUser) || empty($adminPass)) {
             echo json_encode(['success' => false, 'message' => '请填写所有必填项']);

@@ -181,32 +181,32 @@ class PhotoController extends BaseController {
 
         $host = strtolower($parsed['host']);
 
-        if (in_array($host, ['localhost', '127.0.0.1', '::1', '0.0.0.0'])) {
-            return false;
+        $privateRanges = [
+            'localhost', '127.0.0.1', '::1', '0.0.0.0',
+            '10.', '172.16.', '172.17.', '172.18.', '172.19.',
+            '172.20.', '172.21.', '172.22.', '172.23.',
+            '172.24.', '172.25.', '172.26.', '172.27.',
+            '172.28.', '172.29.', '172.30.', '172.31.',
+            '192.168.', '169.254.',
+            'fc00:', 'fd00:', 'fe80:', 'fec0:',
+        ];
+
+        foreach ($privateRanges as $range) {
+            if (str_starts_with($host, $range)) {
+                return false;
+            }
         }
 
-        if (str_starts_with($host, '192.168.') ||
-            str_starts_with($host, '10.') ||
-            str_starts_with($host, '172.16.') || str_starts_with($host, '172.17.') ||
-            str_starts_with($host, '172.18.') || str_starts_with($host, '172.19.') ||
-            str_starts_with($host, '172.20.') || str_starts_with($host, '172.21.') ||
-            str_starts_with($host, '172.22.') || str_starts_with($host, '172.23.') ||
-            str_starts_with($host, '172.24.') || str_starts_with($host, '172.25.') ||
-            str_starts_with($host, '172.26.') || str_starts_with($host, '172.27.') ||
-            str_starts_with($host, '172.28.') || str_starts_with($host, '172.29.') ||
-            str_starts_with($host, '172.30.') || str_starts_with($host, '172.31.') ||
-            str_starts_with($host, '169.254.') ||
-            str_starts_with($host, 'fc00:') || str_starts_with($host, 'fd00:') ||
-            str_starts_with($host, 'fe80:') || str_starts_with($host, 'fec0:')) {
-            return false;
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return true;
         }
 
         $ip = gethostbyname($host);
-        if ($ip !== $host && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+        if ($ip === $host) {
             return false;
         }
 
-        return true;
+        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
     }
 
     private function update(): void {
