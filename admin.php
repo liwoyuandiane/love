@@ -412,7 +412,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <div class="modal" id="photoEditModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-image"></i> 编辑照片</h3>
+                <h3 id="photoEditModalTitle"><i class="fas fa-image"></i> 编辑照片</h3>
                 <button class="close-btn" onclick="closePhotoEditModal()">&times;</button>
             </div>
             <form id="photoEditForm">
@@ -420,9 +420,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <label>图片说明</label>
                     <input type="text" class="form-input" id="photoEditCaption" maxlength="200">
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="photoUrlGroup">
                     <label>图片链接</label>
                     <input type="url" class="form-input" id="photoEditUrl" placeholder="https://example.com/image.jpg">
+                </div>
+                <div class="form-group" id="photoLocalPathGroup" style="display:none">
+                    <label>本地路径</label>
+                    <input type="text" class="form-input" id="photoEditLocalPath" placeholder="/assets/uploads/xxx.jpg" readonly>
                 </div>
                 <div class="form-group">
                     <label>预览</label>
