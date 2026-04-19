@@ -27,13 +27,13 @@ class Cache {
         }
 
         $content = file_get_contents($file);
-        return $content ? unserialize($content) : null;
+        return $content ? json_decode($content, true) : null;
     }
 
     public static function set(string $key, mixed $value, int $ttl = null): bool {
         self::init();
         $file = self::getFilePath($key);
-        $data = serialize($value);
+        $data = json_encode($value, JSON_UNESCAPED_UNICODE);
         $result = file_put_contents($file, $data, LOCK_EX);
         return $result !== false;
     }
