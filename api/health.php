@@ -12,7 +12,7 @@ header('Content-Type: application/json');
 $health = [
     'status' => 'ok',
     'timestamp' => date('Y-m-d H:i:s'),
-    'version' => '2.0.0',
+    'version' => APP_VERSION,
     'checks' => []
 ];
 

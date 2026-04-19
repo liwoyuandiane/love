@@ -49,7 +49,7 @@ try {
 
     $exportData = [
         'exportDate' => date('c'),
-        'version' => '2.0.0',
+        'version' => APP_VERSION,
         'data' => [
             'coupleInfo' => $coupleInfo,
             'anniversaries' => $anniversaries,

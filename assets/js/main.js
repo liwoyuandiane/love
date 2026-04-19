@@ -121,7 +121,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     renderMusic();
                 }
             }
-        } catch (e) { }
+        } catch (e) {
+            console.warn('数据同步失败:', e);
+        }
     }
 
     function startBackgroundSync() {
@@ -335,7 +337,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.retryImage = function(btn) {
         const img = btn.closest('.photo-card').querySelector('img');
-        img.src = img.dataset.url + '?t=' + Date.now();
+        const retryCount = parseInt(img.dataset.retryCount || '0') + 1;
+        img.dataset.retryCount = retryCount;
+        if (retryCount > 3) {
+            img.src = img.dataset.url + '?t=' + Date.now();
+        } else {
+            img.src = img.dataset.url + '?retry=' + retryCount;
+        }
         img.style.display = 'block';
         btn.style.display = 'none';
     };
@@ -393,6 +401,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         update();
         timerInterval = setInterval(update, 1000);
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                clearInterval(timerInterval);
+            } else {
+                timerInterval = setInterval(update, 1000);
+            }
+        });
     }
 
     function initBackgroundEffects() {
