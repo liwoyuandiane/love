@@ -664,7 +664,30 @@
             margin-top: 25px;
             justify-content: flex-end;
         }
-        
+
+        .photo-edit-preview {
+            margin-top: 10px;
+            border-radius: 12px;
+            overflow: hidden;
+            max-height: 200px;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .photo-edit-preview img {
+            max-width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+        }
+
+        .photo-edit-preview .error-msg {
+            padding: 40px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
         /* Toast */
         .toast {
             position: fixed;

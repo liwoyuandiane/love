@@ -409,6 +409,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         </div>
     </div>
 
+    <div class="modal" id="photoEditModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-image"></i> 编辑照片</h3>
+                <button class="close-btn" onclick="closePhotoEditModal()">&times;</button>
+            </div>
+            <form id="photoEditForm">
+                <div class="form-group">
+                    <label>图片说明</label>
+                    <input type="text" class="form-input" id="photoEditCaption" maxlength="200">
+                </div>
+                <div class="form-group">
+                    <label>图片链接</label>
+                    <input type="url" class="form-input" id="photoEditUrl" placeholder="https://example.com/image.jpg">
+                </div>
+                <div class="form-group">
+                    <label>预览</label>
+                    <div class="photo-edit-preview" id="photoEditPreview"></div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closePhotoEditModal()">取消</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 
     <script>
