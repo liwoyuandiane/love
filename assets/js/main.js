@@ -362,36 +362,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function startTimer() {
         if (!siteData?.coupleInfo) return;
-        const [y, mo, d] = siteData.coupleInfo.anniversary.split('T')[0].split('-').map(Number);
-        // 使用 UTC 避免时区问题
-        const startDate = Date.UTC(y, mo - 1, d, 0, 0, 0);
-        let totalSeconds = Math.floor((Date.now() - startDate) / 1000);
-        if (totalSeconds < 0) totalSeconds = 0;
-
-        const MS_PER_MINUTE = 60;
-        const MS_PER_HOUR = MS_PER_MINUTE * 60;
-        const MS_PER_DAY = MS_PER_HOUR * 24;
-        const MS_PER_MONTH = MS_PER_DAY * 30.44;
-        const MS_PER_YEAR = MS_PER_DAY * 365.25;
 
         function update() {
-            totalSeconds++;
-            let remaining = totalSeconds;
-
-            const years = Math.floor(remaining / MS_PER_YEAR);
-            remaining -= years * MS_PER_YEAR;
-            const months = Math.floor(remaining / MS_PER_MONTH);
-            remaining -= months * MS_PER_MONTH;
-            const days = Math.floor(remaining / MS_PER_DAY);
-            remaining -= days * MS_PER_DAY;
-            const hours = Math.floor(remaining / MS_PER_HOUR);
-            remaining -= hours * MS_PER_HOUR;
-            const minutes = Math.floor(remaining / MS_PER_MINUTE);
-            const seconds = remaining - minutes * MS_PER_MINUTE;
+            const now = new Date();
+            const years = now.getFullYear();
+            const months = now.getMonth() + 1;
+            const days = now.getDate();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
 
             const set = (id, v) => { const el = $(id); if (el) el.textContent = v };
             set('years', years); set('months', months); set('days', days);
-            set('hours', String(hours).padStart(2,'0')); set('minutes', String(minutes).padStart(2,'0')); set('seconds', String(seconds).padStart(2,'0'));
+            set('hours', hours); set('minutes', minutes); set('seconds', seconds);
         }
 
         update();
