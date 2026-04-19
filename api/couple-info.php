@@ -76,6 +76,7 @@ class CoupleInfoController extends BaseController {
         );
         $stmt->execute([$name1, $name2, $anniversary]);
 
+        Logger::audit('Update couple info', ['name1' => $name1, 'name2' => $name2, 'anniversary' => $anniversary]);
         Cache::clear('api_data');
         $this->success(null, '保存成功');
     }

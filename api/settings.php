@@ -77,6 +77,7 @@ class SettingsController extends BaseController {
         );
         $stmt->execute([$icpCode, $policeRecordCode, $siteName, $timezone]);
 
+        Logger::audit('Update settings', ['timezone' => $timezone]);
         Cache::clear('api_data');
         $this->success(null, '保存成功');
     }

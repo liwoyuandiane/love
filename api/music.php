@@ -73,6 +73,7 @@ class MusicController extends BaseController {
         );
         $stmt->execute([$sourceType, $sourceUrl, $backupUrl, $title, $artist]);
 
+        Logger::audit('Update music settings', ['title' => $title]);
         Cache::clear('api_data');
         $this->success(null, '保存成功');
     }

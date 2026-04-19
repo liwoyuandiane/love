@@ -275,6 +275,7 @@ class PhotoController extends BaseController {
             $this->error('记录不存在', 'NOT_FOUND', 404);
         }
 
+        Logger::audit('Delete photo', ['id' => $id, 'url' => $photo['url'] ?? '']);
         Cache::clear('api_data');
         $this->success(null, '删除成功');
     }
