@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const isValidUrl = url => {
             if (!url) return false;
             try {
-                const parsed = new URL(url);
+                const parsed = new URL(url, window.location.origin);
                 return ['http:', 'https:'].includes(parsed.protocol);
             } catch { return false; }
         };
@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const isValidUrl = url => {
             if (!url) return false;
             try {
-                const parsed = new URL(url);
+                const parsed = new URL(url, window.location.origin);
                 return ['http:', 'https:'].includes(parsed.protocol);
             } catch { return false; }
         };
@@ -480,7 +480,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const isValidUrl = url => {
             if (!url) return false;
             try {
-                const parsed = new URL(url);
+                const parsed = new URL(url, window.location.origin);
                 return ['http:', 'https:'].includes(parsed.protocol);
             } catch { return false; }
         };

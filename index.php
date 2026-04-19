@@ -29,7 +29,7 @@ ensureSession();
     <link rel="manifest" href="/assets/manifest.json">
     <link rel="stylesheet" href="/assets/css/fonts.css">
     <link rel="stylesheet" href="/assets/css/fontawesome.css">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/style.css?v=20260419">
 </head>
 <body>
     <script>
