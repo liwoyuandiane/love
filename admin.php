@@ -365,7 +365,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 <h2><i class="fas fa-user-shield"></i> 账号管理</h2>
             </div>
             <div class="current-user-info" style="margin-bottom: 20px; padding: 12px; background: rgba(255,107,157,0.2); border-radius: 8px;">
-                <i class="fas fa-user-circle"></i> 当前登录账号: <strong><?php echo htmlspecialchars($currentUsername); ?></strong>
+                <i class="fas fa-user-circle"></i> 当前登录账号: <strong><?php echo htmlspecialchars($currentUsername, ENT_QUOTES, 'UTF-8'); ?></strong>
             </div>
             <form id="adminUserForm">
                 <div class="form-grid">
