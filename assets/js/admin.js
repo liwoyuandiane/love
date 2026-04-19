@@ -416,14 +416,7 @@ const handleExploreSubmit = async e => {
 const renderPhotoGrid = () => {
     const photos = siteData?.photos || [];
     const grid = $('photoGrid');
-    if (!photos.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-images"></i><p>暂无照片</p></div>'; return; }
-    const isValidUrl = url => {
-        if (!url) return false;
-        try {
-            const parsed = new URL(url, window.location.origin);
-            return ['http:', 'https:'].includes(parsed.protocol);
-        } catch { return false; }
-    };
+    if (!photos.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1|/1"><i class="fas fa-images"></i><p>暂无照片</p></div>'; return; }
     const safeUrl = url => isValidUrl(url) ? url : '';
     grid.innerHTML = photos.map(p => `
         <div class="photo-item"><img src="${safeUrl(p.url)}" alt="${utils.escapeHtml(p.caption || '')}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%23333%22 width=%22200%22 height=%22200%22/><text x=%2250%%22 y=%2250%%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2214%22>加载失败</text></svg>'">
@@ -432,6 +425,14 @@ const renderPhotoGrid = () => {
             <button class="btn btn-primary btn-sm" onclick="openPhotoEditModal(${p.id}, '${utils.escapeHtml(p.caption || '')}', '${utils.escapeHtml(p.url || '')}', '${p.source_type || 'local'}')" title="编辑"><i class="fas fa-edit"></i></button>
             <button class="btn btn-danger btn-sm" onclick="deleteItem('photo',${p.id})"><i class="fas fa-trash"></i></button>
         </div></div>`).join('');
+};
+
+const isValidUrl = url => {
+    if (!url) return false;
+    try {
+        const parsed = new URL(url, window.location.origin);
+        return ['http:', 'https:'].includes(parsed.protocol);
+    } catch { return false; }
 };
 
 let currentEditingPhotoId = null;
