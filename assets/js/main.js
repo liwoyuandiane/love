@@ -227,10 +227,18 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderMilestoneBadge(days) {
         const milestones = [
             { days: 100, icon: '🎉', label: '100天纪念' },
+            { days: 200, icon: '🌈', label: '200天纪念' },
             { days: 365, icon: '🎊', label: '1周年' },
             { days: 500, icon: '🌟', label: '500天纪念' },
+            { days: 730, icon: '🎂', label: '2周年' },
             { days: 1000, icon: '💝', label: '1000天纪念' },
+            { days: 1095, icon: '🎁', label: '3周年' },
+            { days: 1460, icon: '💑', label: '4周年' },
             { days: 1825, icon: '💖', label: '5周年' },
+            { days: 2190, icon: '💗', label: '6周年' },
+            { days: 2555, icon: '💓', label: '7周年' },
+            { days: 2920, icon: '💘', label: '8周年' },
+            { days: 3285, icon: '💞', label: '9周年' },
             { days: 3650, icon: '💕', label: '10周年' }
         ];
         const m = milestones.filter(o => o.days <= days).pop();
