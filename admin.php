@@ -243,9 +243,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 <div class="form-group">
                     <div class="file-upload" id="fileUploadArea">
                         <input type="file" id="photoFile" accept="image/*">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <p>点击或拖拽图片到此处上传</p>
-                        <p class="hint">支持 jpg, png, gif, webp 格式，最大 10MB</p>
+                        <i class="fas fa-cloud-upload-alt" id="uploadIcon"></i>
+                        <p id="uploadText">点击或拖拽图片到此处上传</p>
+                        <p class="hint" id="uploadHint">支持 jpg, png, gif, webp 格式，最大 10MB</p>
+                        <p id="fileNameDisplay" style="display:none; margin-top:8px; color: var(--success); word-break:break-all;"></p>
                     </div>
                 </div>
                 <div class="form-group" style="margin-top: 15px;">
