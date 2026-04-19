@@ -221,9 +221,21 @@ class PhotoController extends BaseController {
         }
 
         $caption = trim($data['caption'] ?? '');
+        $url = isset($data['url']) ? trim($data['url']) : null;
 
-        $stmt = $this->db->prepare("UPDATE photos SET caption = ?, updated_at = NOW() WHERE id = ?");
-        $stmt->execute([$caption, $id]);
+        if ($url !== null && $url !== '') {
+            if (!filter_var($url, FILTER_VALIDATE_URL)) {
+                $this->error('无效的图片链接', 'VALIDATION_ERROR');
+            }
+            if (!$this->isUrlSafe($url)) {
+                $this->error('不允许的 URL', 'VALIDATION_ERROR');
+            }
+            $stmt = $this->db->prepare("UPDATE photos SET caption = ?, url = ?, source_type = 'url', updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$caption, $url, $id]);
+        } else {
+            $stmt = $this->db->prepare("UPDATE photos SET caption = ?, updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$caption, $id]);
+        }
 
         Cache::clear('api_data');
         $this->success(null, '更新成功');
