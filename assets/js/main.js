@@ -363,8 +363,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function startTimer() {
         if (!siteData?.coupleInfo) return;
         const [y, mo, d] = siteData.coupleInfo.anniversary.split('T')[0].split('-').map(Number);
-        const startDate = new Date(y, mo - 1, d, 0, 0, 0);
-        let totalSeconds = Math.floor((Date.now() - startDate.getTime()) / 1000);
+        // 使用 UTC 避免时区问题
+        const startDate = Date.UTC(y, mo - 1, d, 0, 0, 0);
+        let totalSeconds = Math.floor((Date.now() - startDate) / 1000);
         if (totalSeconds < 0) totalSeconds = 0;
 
         const MS_PER_MINUTE = 60;
