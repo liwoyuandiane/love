@@ -233,8 +233,11 @@ class PhotoController extends BaseController {
         $this->requireAuth();
         $this->validateRequest();
 
-        $data = $this->getJsonInput();
-        $id = intval($data['id'] ?? 0);
+        $id = intval($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            $data = $this->getJsonInput();
+            $id = intval($data['id'] ?? 0);
+        }
 
         if ($id <= 0) {
             $this->error('无效的ID', 'VALIDATION_ERROR');
