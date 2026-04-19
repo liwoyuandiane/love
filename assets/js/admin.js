@@ -429,45 +429,71 @@ const renderPhotoGrid = () => {
         <div class="photo-item"><img src="${safeUrl(p.url)}" alt="${utils.escapeHtml(p.caption || '')}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%23333%22 width=%22200%22 height=%22200%22/><text x=%2250%%22 y=%2250%%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2214%22>加载失败</text></svg>'">
         <p class="caption">${utils.escapeHtml(p.caption || '无说明')}</p>
         <div class="actions">
-            <button class="btn btn-primary btn-sm" onclick="openPhotoEditModal(${p.id}, '${utils.escapeHtml(p.caption || '')}', '${utils.escapeHtml(p.url || '')}')" title="编辑"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-primary btn-sm" onclick="openPhotoEditModal(${p.id}, '${utils.escapeHtml(p.caption || '')}', '${utils.escapeHtml(p.url || '')}', '${p.source_type || 'local'}')" title="编辑"><i class="fas fa-edit"></i></button>
             <button class="btn btn-danger btn-sm" onclick="deleteItem('photo',${p.id})"><i class="fas fa-trash"></i></button>
         </div></div>`).join('');
 };
 
 let currentEditingPhotoId = null;
+let currentEditingPhotoType = null;
 
-window.openPhotoEditModal = (id, caption, url) => {
+window.openPhotoEditModal = (id, caption, url, sourceType) => {
     currentEditingPhotoId = id;
+    currentEditingPhotoType = sourceType || 'local';
     const modal = $('photoEditModal'), captionInput = $('photoEditCaption'), urlInput = $('photoEditUrl'), preview = $('photoEditPreview');
+    const localPathInput = $('photoEditLocalPath');
+    const urlGroup = $('photoUrlGroup');
+    const localPathGroup = $('photoLocalPathGroup');
+    const modalTitle = $('photoEditModalTitle');
+
     captionInput.value = caption;
-    urlInput.value = url;
-    if (url && isValidUrl(url)) {
-        preview.innerHTML = `<img src="${utils.escapeHtml(url)}" alt="预览" onerror="this.parentElement.innerHTML='<span class=error-msg>图片加载失败</span>'">`;
-    } else {
-        preview.innerHTML = '<span class="error-msg">无效的图片链接</span>';
-    }
-    urlInput.oninput = () => {
-        const u = urlInput.value.trim();
-        if (u && isValidUrl(u)) {
-            preview.innerHTML = `<img src="${utils.escapeHtml(u)}" alt="预览" onerror="this.parentElement.innerHTML='<span class=error-msg>图片加载失败</span>'">`;
+
+    if (currentEditingPhotoType === 'url') {
+        modalTitle.innerHTML = '<i class="fas fa-link"></i> 编辑链接图片';
+        urlGroup.style.display = 'block';
+        localPathGroup.style.display = 'none';
+        urlInput.value = url;
+        if (url && isValidUrl(url)) {
+            preview.innerHTML = `<img src="${utils.escapeHtml(url)}" alt="预览" onerror="this.parentElement.innerHTML='<span class=error-msg>图片加载失败</span>'">`;
         } else {
-            preview.innerHTML = '<span class="error-msg">请输入有效的图片链接</span>';
+            preview.innerHTML = '<span class="error-msg">无效的图片链接</span>';
         }
-    };
+        urlInput.oninput = () => {
+            const u = urlInput.value.trim();
+            if (u && isValidUrl(u)) {
+                preview.innerHTML = `<img src="${utils.escapeHtml(u)}" alt="预览" onerror="this.parentElement.innerHTML='<span class=error-msg>图片加载失败</span>'">`;
+            } else {
+                preview.innerHTML = '<span class="error-msg">请输入有效的图片链接</span>';
+            }
+        };
+    } else {
+        modalTitle.innerHTML = '<i class="fas fa-upload"></i> 编辑本地上传照片';
+        urlGroup.style.display = 'none';
+        localPathGroup.style.display = 'block';
+        localPathInput.value = url;
+        const fullUrl = window.location.origin + url;
+        preview.innerHTML = `<img src="${utils.escapeHtml(fullUrl)}" alt="预览" onerror="this.parentElement.innerHTML='<span class=error-msg>图片加载失败</span>'">`;
+    }
     modal.classList.add('active');
 };
 
 window.closePhotoEditModal = () => {
     $('photoEditModal').classList.remove('active');
     currentEditingPhotoId = null;
+    currentEditingPhotoType = null;
 };
 
 $('photoEditForm').onsubmit = async e => {
     e.preventDefault();
     if (!currentEditingPhotoId) return;
     const caption = $('photoEditCaption').value.trim();
-    const url = $('photoEditUrl').value.trim();
-    if (url && !isValidUrl(url)) { showToast('请输入有效的图片链接', 'error'); return; }
+    let url = null;
+
+    if (currentEditingPhotoType === 'url') {
+        url = $('photoEditUrl').value.trim();
+        if (url && !isValidUrl(url)) { showToast('请输入有效的图片链接', 'error'); return; }
+    }
+
     try {
         const res = await csrfFetch(`${API_BASE}/photos`, {
             method: 'PUT',
@@ -479,7 +505,7 @@ $('photoEditForm').onsubmit = async e => {
             showToast('更新成功', 'success');
             clearFrontendCache();
             closePhotoEditModal();
-            updateInLocalList('photos', currentEditingPhotoId, { caption, url });
+            updateInLocalList('photos', currentEditingPhotoId, { caption, url: url || undefined });
             renderPhotoGrid();
         } else {
             showToast(result.error?.message || '更新失败', 'error');
