@@ -363,14 +363,28 @@ document.addEventListener('DOMContentLoaded', function() {
     function startTimer() {
         if (!siteData?.coupleInfo) return;
 
+        const timezone = siteData?.settings?.timezone || 'Asia/Shanghai';
+
         function update() {
             const now = new Date();
-            const years = now.getFullYear();
-            const months = now.getMonth() + 1;
-            const days = now.getDate();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const formatter = new Intl.DateTimeFormat('en-CA', {
+                timeZone: timezone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            const parts = formatter.formatToParts(now);
+            const get = (type) => parts.find(p => p.type === type)?.value || '00';
+            const years = get('year');
+            const months = get('month');
+            const days = get('day');
+            const hours = get('hour');
+            const minutes = get('minute');
+            const seconds = get('second');
 
             const set = (id, v) => { const el = $(id); if (el) el.textContent = v };
             set('years', years); set('months', months); set('days', days);
