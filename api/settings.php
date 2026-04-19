@@ -59,17 +59,13 @@ class SettingsController extends BaseController {
 
         $data = $this->getJsonInput();
 
-        $icpCode = trim($data['icp_code'] ?? '');
-        $policeRecordCode = trim($data['police_record_code'] ?? '');
-        $siteName = trim($data['site_name'] ?? '');
+        $icpCode = mb_substr(trim($data['icp_code'] ?? ''), 0, 100);
+        $policeRecordCode = mb_substr(trim($data['police_record_code'] ?? ''), 0, 100);
+        $siteName = mb_substr(trim($data['site_name'] ?? ''), 0, 200);
         $timezone = trim($data['timezone'] ?? 'Asia/Shanghai');
 
-        $errors = Validator::validate(compact('icpCode'), [
-            'icpCode' => 'max:100'
-        ]);
-
-        if (!empty($errors)) {
-            $this->error($errors[0], 'VALIDATION_ERROR');
+        if (!in_array($timezone, timezone_identifiers_list())) {
+            $timezone = 'Asia/Shanghai';
         }
 
         $stmt = $this->db->prepare(

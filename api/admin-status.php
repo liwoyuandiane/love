@@ -5,6 +5,7 @@
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
 
 header('Content-Type: application/json');
 
@@ -14,7 +15,7 @@ if (isLoggedIn()) {
     echo json_encode([
         'success' => true,
         'isAdmin' => isAdmin(),
-        'username' => $_SESSION['user_username'] ?? '',
+        'username' => escapeHtml($_SESSION['user_username'] ?? ''),
         'role' => getCurrentUserRole()
     ]);
 } else {

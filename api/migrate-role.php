@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/logger.php';
 
 header('Content-Type: application/json');
 
@@ -18,8 +19,7 @@ if (!isAdmin()) {
 
 try {
     $db = getDB();
-    
-    // Check if role column exists
+
     $cols = $db->query("SHOW COLUMNS FROM admin_users LIKE 'role'")->fetchAll();
     if (!empty($cols)) {
         echo json_encode(['success' => true, 'message' => 'Migration already applied (role column exists)']);
@@ -29,7 +29,9 @@ try {
     $db->exec("ALTER TABLE admin_users ADD COLUMN role ENUM('admin', 'user') DEFAULT 'admin'");
     $db->exec("UPDATE admin_users SET role = 'admin' WHERE role IS NULL OR role = ''");
 
+    Logger::audit('Migration: add role column', ['user_id' => $_SESSION['user_id'] ?? 0]);
     echo json_encode(['success' => true, 'message' => 'Migration completed successfully']);
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    Logger::error('Migration failed: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'error' => 'Migration failed']);
 }

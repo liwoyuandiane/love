@@ -58,14 +58,23 @@ class MusicController extends BaseController {
         $data = $this->getJsonInput();
 
         $sourceType = $data['source_type'] ?? 'url';
-        $sourceUrl = trim($data['source_url'] ?? '');
-        $backupUrl = trim($data['backup_url'] ?? '');
-        $title = trim($data['title'] ?? '');
-        $artist = trim($data['artist'] ?? '');
+        $sourceUrl = mb_substr(trim($data['source_url'] ?? ''), 0, 500);
+        $backupUrl = mb_substr(trim($data['backup_url'] ?? ''), 0, 500);
+        $title = mb_substr(trim($data['title'] ?? ''), 0, 200);
+        $artist = mb_substr(trim($data['artist'] ?? ''), 0, 100);
 
         $allowedSourceTypes = ['url', 'local'];
         if (!in_array($sourceType, $allowedSourceTypes)) {
             $sourceType = 'url';
+        }
+
+        if ($sourceType === 'url' && $sourceUrl !== '' && !filter_var($sourceUrl, FILTER_VALIDATE_URL)) {
+            $this->error('无效的音乐链接', 'VALIDATION_ERROR');
+            return;
+        }
+
+        if ($backupUrl !== '' && !filter_var($backupUrl, FILTER_VALIDATE_URL)) {
+            $backupUrl = '';
         }
 
         $stmt = $this->db->prepare(
