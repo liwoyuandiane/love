@@ -280,6 +280,8 @@ A: 请检查：
 - 在 health API 中添加 PHP 配置检测
 - 添加时区设置功能，支持用户选择所在时区（默认北京时间）
 - 修复导入导出功能支持 timezone 字段
+- 修复 data.php 查询 site_settings 时缺少 timezone 字段
+- 修复前台 ICP 备案信息的 XSS 安全漏洞
 
 ### v2.0.2
 - 照片卡片统一为 4:3 比例显示
