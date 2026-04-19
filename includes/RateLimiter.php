@@ -179,7 +179,12 @@ class RateLimiter {
     public static function getClientIp(): string {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
-        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        // 仅在信任的代理环境下（内网）才使用代理头
+        // 防止攻击者伪造 X-Forwarded-For 绕过限速
+        $isTrustedProxy = false;
+        $trustedProxies = ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'];
+
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR']) && $isTrustedProxy) {
             $forwardedFor = $_SERVER['HTTP_X_FORWARDED_FOR'];
             $ips = array_map('trim', explode(',', $forwardedFor));
             $firstIp = filter_var($ips[0], FILTER_VALIDATE_IP);
@@ -188,7 +193,7 @@ class RateLimiter {
             }
         }
 
-        if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+        if (!empty($_SERVER['HTTP_X_REAL_IP']) && $isTrustedProxy) {
             $realIp = trim($_SERVER['HTTP_X_REAL_IP']);
             $validatedIp = filter_var($realIp, FILTER_VALIDATE_IP);
             if ($validatedIp !== false) {
