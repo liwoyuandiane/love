@@ -293,6 +293,13 @@ A: 请检查：
 - 优化计时器性能（避免每秒创建 DateTimeFormat 实例）
 - 修复背景效果元素重复创建问题
 - 改进里程碑显示逻辑（显示最近达成的里程碑）
+- login.php logout action 添加 CSRF 验证
+- admin-logout.php 添加 CSRF 验证和登录状态检查
+- admin-status.php 添加 username 转义
+- settings.php 添加 timezone 验证和长度限制
+- music.php 添加 URL 验证和长度限制
+- wishlists-toggle.php 添加审计日志
+- migrate-role.php 隐藏数据库错误信息
 
 ### v2.0.2
 - 照片卡片统一为 4:3 比例显示
