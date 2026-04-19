@@ -48,10 +48,10 @@ try {
     $stmt = $db->query("SELECT source_type, source_url, backup_url, title, artist FROM music WHERE id = 1");
     $music = $stmt->fetch();
 
-    $stmt = $db->query("SELECT icp_code, police_record_code, site_name FROM site_settings WHERE id = 1");
+    $stmt = $db->query("SELECT icp_code, police_record_code, site_name, timezone FROM site_settings WHERE id = 1");
     $settings = $stmt->fetch();
     if (!$settings) {
-        $settings = ['icp_code' => '', 'police_record_code' => '', 'site_name' => ''];
+        $settings = ['icp_code' => '', 'police_record_code' => '', 'site_name' => '', 'timezone' => 'Asia/Shanghai'];
     }
 
     $data = [
