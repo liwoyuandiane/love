@@ -5,9 +5,19 @@
 
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 
-// API routes with ID (e.g., /api/wishlists/123/toggle)
+// API routes with ID and action (e.g., /api/wishlists/123/toggle)
 if (preg_match('#^/api/([^/]+)/(\d+)/([^/]+)$#', $uri, $matches)) {
     $apiFile = __DIR__ . '/api/' . $matches[1] . '-' . $matches[3] . '.php';
+    if (file_exists($apiFile)) {
+        $_GET['id'] = $matches[2];
+        require $apiFile;
+        return true;
+    }
+}
+
+// API routes with ID (e.g., /api/photos/2) - DELETE, PUT
+if (preg_match('#^/api/([^/]+)/(\d+)$#', $uri, $matches)) {
+    $apiFile = __DIR__ . '/api/' . $matches[1] . '.php';
     if (file_exists($apiFile)) {
         $_GET['id'] = $matches[2];
         require $apiFile;
