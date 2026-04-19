@@ -57,7 +57,7 @@ if (session_status() === PHP_SESSION_NONE) {
 date_default_timezone_set('Asia/Shanghai');
 
 // 版本号
-define('APP_VERSION', '2.0.3');
+define('APP_VERSION', '3.0.0');
 
 // 加载日志类
 require_once __DIR__ . '/includes/logger.php';
