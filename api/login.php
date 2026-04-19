@@ -48,6 +48,7 @@ if ($method === 'POST') {
             jsonResponse(false, null, '登录失败', 'SERVER_ERROR');
         }
     } elseif ($action === 'logout') {
+        verifyCSRF();
         logout();
         jsonResponse(true, null, '已退出登录');
     } elseif ($action === 'check') {
