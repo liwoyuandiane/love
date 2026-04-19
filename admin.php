@@ -333,20 +333,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         <label for="timezone">时区设置</label>
                         <select class="form-input" id="timezone">
                             <option value="Asia/Shanghai">北京时间 (UTC+8)</option>
-                            <option value="Asia/Hong_Kong">香港时间 (UTC+8)</option>
-                            <option value="Asia/Taipei">台北时间 (UTC+8)</option>
                             <option value="Asia/Tokyo">东京时间 (UTC+9)</option>
-                            <option value="Asia/Seoul">首尔时间 (UTC+9)</option>
-                            <option value="Asia/Singapore">新加坡时间 (UTC+8)</option>
-                            <option value="Asia/Dubai">迪拜时间 (UTC+4)</option>
                             <option value="Europe/London">伦敦时间 (UTC+0)</option>
                             <option value="Europe/Paris">巴黎时间 (UTC+1)</option>
-                            <option value="Europe/Berlin">柏林时间 (UTC+1)</option>
                             <option value="America/New_York">纽约时间 (UTC-5)</option>
                             <option value="America/Los_Angeles">洛杉矶时间 (UTC-8)</option>
-                            <option value="America/Chicago">芝加哥时间 (UTC-6)</option>
                             <option value="Australia/Sydney">悉尼时间 (UTC+10)</option>
-                            <option value="Pacific/Auckland">奥克兰时间 (UTC+12)</option>
                         </select>
                         <small style="color: var(--text-muted); font-size: 0.8rem;">选择你所在的时区，计时器将按照此时区显示时间</small>
                     </div>
