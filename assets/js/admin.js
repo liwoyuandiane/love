@@ -114,7 +114,8 @@ const setupEventListeners = () => {
     $('musicUrl')?.addEventListener('input', updateMusicPreview);
     $('localPath')?.addEventListener('input', updateMusicPreview);
     const fileArea = $('fileUploadArea'), photoFile = $('photoFile');
-    fileArea?.addEventListener('click', () => photoFile.click());
+    fileArea?.addEventListener('click', () => photoFile?.click());
+    photoFile?.addEventListener('change', () => { if (photoFile.files.length) fileArea.style.borderColor = 'var(--success)'; });
     fileArea?.addEventListener('dragover', e => { e.preventDefault(); fileArea.style.borderColor = 'var(--primary)'; });
     fileArea?.addEventListener('dragleave', () => { fileArea.style.borderColor = 'rgba(255, 255, 255, 0.15)'; });
     fileArea?.addEventListener('drop', e => { e.preventDefault(); fileArea.style.borderColor = 'rgba(255, 255, 255, 0.15)'; if (e.dataTransfer.files.length) photoFile.files = e.dataTransfer.files; });
