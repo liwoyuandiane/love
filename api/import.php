@@ -144,6 +144,17 @@ try {
             mb_substr($m['artist'] ?? '', 0, 100)
         ]);
     }
+
+    if (!empty($data['siteSettings'])) {
+        $s = $data['siteSettings'];
+        $stmt = $db->prepare("UPDATE site_settings SET icp_code = ?, police_record_code = ?, site_name = ?, timezone = ? WHERE id = 1");
+        $stmt->execute([
+            mb_substr($s['icp_code'] ?? '', 0, 100),
+            mb_substr($s['police_record_code'] ?? '', 0, 100),
+            mb_substr($s['site_name'] ?? '', 0, 200),
+            mb_substr($s['timezone'] ?? 'Asia/Shanghai', 0, 50)
+        ]);
+    }
     
     $db->commit();
 
