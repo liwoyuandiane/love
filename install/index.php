@@ -172,6 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt = $pdo->prepare("INSERT INTO `admin_users` (`username`, `password`, `role`) VALUES (?, ?, 'admin')");
             $stmt->execute([$adminUser, $hashedPassword]);
 
+            $dbPass = preg_replace('/[\r\n]/', '', $dbPass);
             $envContent = "DB_HOST=$dbHost\nDB_PORT=$dbPort\nDB_NAME=$dbName\nDB_USER=$dbUser\nDB_PASS=$dbPass\n";
 
             if (file_put_contents($envFile, $envContent)) {

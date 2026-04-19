@@ -456,10 +456,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <div class="toast" id="toast"></div>
 
     <script>
-        window.CSRF_TOKEN = '<?php echo CSRF::generate(); ?>';
-        window.CURRENT_USER_ROLE = '<?php echo $currentUserRole; ?>';
+        window.CSRF_TOKEN = '<?php echo htmlspecialchars(CSRF::generate(), ENT_QUOTES); ?>';
+        window.CURRENT_USER_ROLE = '<?php echo htmlspecialchars($currentUserRole ?? 'user', ENT_QUOTES); ?>';
         window.CURRENT_USER_ID = <?php echo intval($currentUserId); ?>;
-        window.IS_ADMIN = <?php echo $currentUserRole === 'admin' ? 'true' : 'false'; ?>;
+        window.IS_ADMIN = <?php echo ($currentUserRole ?? 'user') === 'admin' ? 'true' : 'false'; ?>;
     </script>
     <script src="/assets/js/utils.js"></script>
     <script src="/assets/js/admin.js"></script>
