@@ -18,9 +18,6 @@
   - [Docker 部署（推荐）](#1-docker-部署推荐)
 
 - [使用说明](#-使用说明)
-- [项目结构](#-项目结构)
-- [API 接口](#-api-接口)
-- [安全设计](#-安全设计)
 - [常见问题](#-常见问题)
 - [更新日志](#-更新日志)
 - [贡献指南](#-贡献指南)
@@ -54,7 +51,7 @@
 - ⚡ **GitHub Actions 自动构建**：推 main 打 latest，打 `v*` 标签打版本
 - 🚀 前台缓存秒开 + 后台增量刷新
 - 🔐 **登录会话持久化**：容器重建后登录态不丢失（CSRF 不失效）
-- 🛡️ 全链路安全防护（见 [安全设计](#-安全设计)）
+- 🛡️ 全链路安全防护（SQL 注入/XSS/CSRF/SSRF/上传安全等）
 
 ---
 
@@ -98,9 +95,20 @@ docker compose up -d --build
 
 > compose 同样采用一键数据目录（`./:/data`），`.env` 检测与目录自动创建行为与上方 `docker run` 完全一致。
 
-#### ③ 常用命令与升级
+#### ③ 数据目录（love/）
 
-**数据都在 `love/` 下**，找日志 → `love/logs/`，找照片 → `love/uploads/`，备份直接打包整个 `love/` 目录即可。
+**所有数据都存放在 `love/` 目录下**，直接打包整个目录即可完成备份：
+
+| 目录 | 作用 |
+|------|------|
+| `uploads/` | 📷 **上传的照片**：后台"记忆墙"本地上传的图片文件都存这里 |
+| `cache/` | ⚡ 前台数据缓存 |
+| `logs/` | 📋 应用/错误/审计日志 |
+| `sessions/` | 🔐 登录会话（容器重建后登录态不丢） |
+
+> 📷 **本地图片**：记忆墙上传的图片以随机文件名（如 `65c2d3e4f5a6b7.jpg`）保存到 `uploads/`，数据库 `photos` 表只记录路径（`/assets/uploads/xxx.jpg`）。因此**完整备份 = 后台导出 JSON + 打包 `love/` 目录**（含照片文件）。
+
+#### ④ 常用命令与升级
 
 ```bash
 docker ps                 # 查看容器状态
@@ -111,7 +119,7 @@ docker stop love && docker rm love   # 删除容器（数据保留在 love/ 目�
 
 > 💡 升级镜像：`docker rm -f love && docker run ...`（重新执行 ① 的 run 命令即可），数据不丢。
 
-#### ④ GitHub Actions 自动构建
+#### ⑤ GitHub Actions 自动构建
 
 仓库内置 `.github/workflows/docker-build.yml`，自动构建 **amd64 + arm64** 双架构镜像并推送至 `ghcr.io/liwoyuandiane/love`：
 
@@ -149,103 +157,6 @@ docker stop love && docker rm love   # 删除容器（数据保留在 love/ 目�
 
 ---
 
-## 📁 项目结构
-
-```
-.
-├── index.php              # 前台首页
-├── admin.php              # 后台管理
-├── router.php             # 路由控制器（PHP 内置服务器用）
-├── config.php             # 全局配置（安全头、会话、时区、版本）
-├── .env                   # 环境变量（安装后生成，禁止提交）
-├── .env.example           # 环境变量示例
-├── .htaccess              # Apache 配置（路由 + 安全）
-├── nginx.conf             # Nginx 伪静态片段（非 Docker 部署参考，容器内用 docker-nginx.conf）
-├── docker-nginx.conf      # Docker 容器内 Nginx 配置
-├── Dockerfile             # 多阶段构建（压缩约 41MB）
-├── docker-compose.yml     # Compose 编排（一键数据目录 ./ → /data）
-├── docker-entrypoint.sh   # 容器启动脚本
-├── .dockerignore          # Docker 构建排除
-├── .github/workflows/     # GitHub Actions 自动构建
-├── api/                   # API 接口（REST 风格）
-│   ├── data.php           # 前台聚合数据
-│   ├── login.php          # 登录 / 登出 / 会话检查
-│   ├── photos.php         # 照片 CRUD + 上传
-│   ├── wishlists.php      # 愿望清单 CRUD
-│   ├── anniversaries.php  # 纪念日 CRUD
-│   ├── explores.php       # 探索地点 CRUD
-│   ├── music.php          # 音乐设置
-│   ├── settings.php       # 网站设置
-│   ├── couple-info.php    # 情侣信息
-│   ├── export.php         # 数据导出
-│   ├── import.php         # 数据导入
-│   ├── sync.php           # 会话保活
-│   └── ...                # 后台管理相关
-├── includes/              # 核心类库
-│   ├── auth.php           # 认证与登录锁定
-│   ├── db.php             # PDO 数据库连接
-│   ├── csrf.php           # CSRF 防护
-│   ├── cache.php          # 文件缓存
-│   ├── RateLimiter.php    # IP 限速（APCu/文件双后端）
-│   ├── Validator.php      # 输入验证器
-│   ├── BaseController.php # API 基类
-│   ├── functions.php      # 公共函数 + SSRF 防护
-│   └── logger.php         # 日志系统（app/error/audit）
-├── install/               # 安装向导
-├── assets/                # 前端资源（css/js/fonts/uploads）
-├── cache/                 # 缓存目录
-└── logs/                  # 日志目录
-```
-
----
-
-## 🔌 API 接口
-
-所有接口均返回 JSON，格式：`{"success": bool, "data": ..., "message": ..., "error": {...}}`
-
-| 方法 | 路径 | 说明 | 鉴权 |
-|------|------|------|------|
-| GET | `/api/data` | 前台聚合数据（含 5 分钟缓存） | 公开 |
-| POST | `/api/login.php?action=login` | 登录 | 公开（IP 限速） |
-| POST | `/api/login.php?action=logout` | 登出 | 登录 + CSRF |
-| GET/POST | `/api/login.php?action=check` | 会话检查 | - |
-| GET/POST/PUT/DELETE | `/api/wishlists` | 愿望清单 CRUD | 登录 + CSRF |
-| POST | `/api/wishlists/{id}/toggle` | 切换完成状态 | 登录 + CSRF |
-| GET/POST/PUT/DELETE | `/api/anniversaries` | 纪念日 CRUD | 登录 + CSRF |
-| GET/POST/PUT/DELETE | `/api/explores` | 探索地点 CRUD | 登录 + CSRF |
-| GET/POST/PUT/DELETE | `/api/photos` | 照片 CRUD + 上传 | 登录 + CSRF |
-| GET/PUT | `/api/music` | 音乐设置 | 登录 + CSRF |
-| GET/PUT | `/api/settings` | 网站设置 | 管理员 + CSRF |
-| GET/PUT | `/api/couple-info` | 情侣信息 | 管理员 + CSRF |
-| POST | `/api/export.php` | 导出备份 | 管理员 + CSRF |
-| POST | `/api/import.php` | 导入备份 | 管理员 + CSRF |
-| GET | `/api/health` | 健康检查（数据库/缓存/日志/上传） | 公开 |
-| POST | `/api/sync.php` | 会话保活 | 登录 |
-
-**约定：**
-- 写操作需携带 CSRF Token（请求头 `X-CSRF-Token` 或表单字段 `csrf_token`）
-- 状态码：`200` 成功、`400` 参数错误、`401` 未登录、`403` 无权限、`404` 不存在、`405` 方法不允许、`429` 限速、`500` 服务器错误
-
----
-
-## 🛡️ 安全设计
-
-| 防护项 | 实现 |
-|--------|------|
-| SQL 注入 | 全站 PDO 预处理语句，禁用模拟预处理 |
-| XSS | 输出统一 `escapeHtml()`（ENT_QUOTES），前端 `escapeJs()` 双重防护 |
-| CSRF | 会话绑定 Token，`hash_equals` 常量时间比较 |
-| 密码安全 | bcrypt（cost=12），登录自动重哈希升级，72 字节上限 |
-| 暴力破解 | 5 次失败锁定 15 分钟 + IP 限速（5 次/60 秒，APCu/文件双后端） |
-| 登录锁定 | 数据库记录失败次数与锁定时间（本地时区，修复时区偏差） |
-| SSRF | 域名全量 DNS 解析校验 + 拒绝内网/保留地址 + IPv6 防护（照片/音乐 URL） |
-| 敏感文件 | `.env`/`.git`/隐藏文件/Dockerfile 等禁止访问（Apache + Nginx 双重） |
-| 上传安全 | MIME + 魔数双重校验，uploads 目录禁止执行任何脚本 |
-| 会话安全 | HttpOnly、Secure（HTTPS 下）、SameSite=Strict、定期过期、**持久化** |
-| 安全头 | HSTS、CSP、X-Content-Type-Options、X-Frame-Options、Referrer-Policy |
-| 审计日志 | 登录/登出/增删改/导入导出等关键操作全部留痕 |
-
----
 
 ## ❓ 常见问题
 
