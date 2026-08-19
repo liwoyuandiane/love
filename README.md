@@ -83,33 +83,9 @@ mkdir -p love && cd love
 docker run -d --name love -p 8000:80 -v "$PWD":/data ghcr.io/liwoyuandiane/love:latest
 ```
 
-**启动后容器自动完成以下操作（无需手动创建任何文件/目录）：**
+首次访问（`love/` 下还没有 `.env` 时）：浏览器打开 `http://127.0.0.1:8000/` 会自动进入安装向导，按提示填写数据库信息和管理员账号（密码 8-72 位，需含字母和数字）即可完成安装。
 
-| 自动行为 | 说明 |
-|---------|------|
-| 检测 `.env` | `love/` 下有 `.env` → 直接使用该数据库配置；**没有** → 浏览器访问自动进入安装向导 |
-| 创建数据子目录 | `uploads/` `cache/` `logs/` `sessions/` 自动生成，无需手动 `mkdir` |
-| 映射数据目录 | 照片/缓存/日志/会话自动落到 `love/` 对应目录，容器重建数据不丢 |
-
-**首次安装（`love/` 下无 `.env` 时）：**
-
-1. 浏览器访问 `http://127.0.0.1:8000/`（自动跳转到 `/install/` 安装向导）
-2. 填写数据库信息 + 管理员账号（**密码 8-72 位，需包含字母和数字**）
-3. 点击「测试连接」→「开始安装」
-4. 安装完成后自动进入前台，访问 `http://127.0.0.1:8000/admin.php` 登录后台
-
-安装成功后 `love/` 目录结构（**`.env` 由安装向导自动生成并写入该目录**）：
-
-```
-love/
-├── .env              # 数据库配置（安装向导自动生成，容器重建后仍会读取）
-├── uploads/          # 上传的照片
-├── cache/            # 前台数据缓存
-├── logs/             # 应用/错误/审计日志
-└── sessions/         # 登录会话（容器重建后登录态不丢）
-```
-
-> `.env` 已被 `.dockerignore` 排除，**不会打入镜像**。手动修改 `love/.env` 后执行 `docker restart love` 生效。
+> 容器会自动检测并创建一切：`love/` 下有 `.env` 就用它，没有就进安装向导；`uploads/ cache/ logs/ sessions/` 数据目录自动生成；`.env` 由安装向导写入 `love/`，手动修改后执行 `docker restart love` 生效。
 
 #### ② 本地构建（可选）
 
@@ -146,7 +122,6 @@ docker stop love && docker rm love   # 删除容器（数据保留在 love/ 目�
 | 手动触发（Actions → Run workflow） | 可选 PHP 版本参数 |
 
 ---
-
 
 ## 📖 使用说明
 
@@ -187,7 +162,7 @@ docker stop love && docker rm love   # 删除容器（数据保留在 love/ 目�
 ├── .htaccess              # Apache 配置（路由 + 安全）
 ├── nginx.conf             # Nginx 伪静态片段（非 Docker 部署参考，容器内用 docker-nginx.conf）
 ├── docker-nginx.conf      # Docker 容器内 Nginx 配置
-├── Dockerfile             # 多阶段构建（约 43MB）
+├── Dockerfile             # 多阶段构建（压缩约 41MB）
 ├── docker-compose.yml     # Compose 编排（一键数据目录 ./ → /data）
 ├── docker-entrypoint.sh   # 容器启动脚本
 ├── .dockerignore          # Docker 构建排除
@@ -280,7 +255,7 @@ A: 通常是 **容器重建导致 PHP 会话丢失**（session 未持久化）�
 2. 刷新页面（会重新生成与当前会话匹配的 CSRF Token）
 3. 若仍失败，重启容器：`docker restart love` 后重新登录
 
-> 新版镜像已内置 session 持久化配置（`session.save_path=/var/lib/php/sessions`），只要挂载了 `love/sessions` 目录，容器重建后登录态与 CSRF 均不受影响。
+> 新版镜像已内置 session 持久化（`session.save_path=/var/lib/php/sessions`），挂载 `-v "$PWD":/data` 后会话自动落到 `love/sessions/`，容器重建后登录态与 CSRF 均不受影响。
 
 ### Q: 安装页面提示"could not find driver"
 A: PHP 缺少 `pdo_mysql` 扩展。Docker 部署已内置，无需处理；非 Docker 部署需在 PHP 中启用 `pdo`、`pdo_mysql` 扩展。
