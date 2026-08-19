@@ -238,6 +238,10 @@ const loadAllData = async (showError = true) => {
         if (dataRes.ok) {
             const data = await dataRes.json();
             if (data.success) siteData = data.data;
+            const footerNameEl = $('footerSiteName');
+            if (footerNameEl && siteData && siteData.settings && siteData.settings.site_name) {
+                footerNameEl.textContent = siteData.settings.site_name;
+            }
         }
         if (statusRes.ok) {
             const status = await statusRes.json();

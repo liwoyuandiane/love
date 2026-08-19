@@ -92,11 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <div class="admin-container <?php if ($success) echo 'active'; ?>" id="adminContainer" <?php if (!$success) echo 'style="display:none"'; ?>>
         <div class="admin-header">
             <h1><i class="fas fa-cog"></i> 管理面板</h1>
-            <button type="button" class="version-badge" id="versionBadge" title="当前版本，点击检查更新" onclick="checkUpdate(true)">
-                <i class="fas fa-tag"></i>
-                <span>v<?php echo APP_VERSION; ?></span>
-                <span class="version-dot" id="versionDot" style="display:none" title="发现新版本"></span>
-            </button>
             <div class="header-actions">
                 <a href="/" class="back-link"><i class="fas fa-home"></i> <span>返回首页</span></a>
                 <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> <span>退出</span></button>
@@ -472,6 +467,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     </div>
 
     <div class="toast" id="toast"></div>
+
+    <footer class="admin-footer">
+        <div class="admin-footer-content">
+            <span class="admin-footer-copy"><i class="fas fa-heart"></i> <span id="footerSiteName">情侣纪念网站</span> · © <?php echo date('Y'); ?></span>
+            <span class="admin-footer-sep">·</span>
+            <button type="button" class="admin-footer-version" id="versionBadge" title="当前版本，点击检查更新" onclick="checkUpdate(true)">
+                <i class="fas fa-tag"></i> <span>v<?php echo APP_VERSION; ?></span>
+                <span class="version-dot" id="versionDot" style="display:none" title="发现新版本"></span>
+            </button>
+        </div>
+    </footer>
 
     <script>
         window.CSRF_TOKEN = <?php echo json_encode(CSRF::generate()); ?>;

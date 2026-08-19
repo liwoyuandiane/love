@@ -241,16 +241,40 @@
             background: rgba(255, 107, 157, 0.15);
             border-color: rgba(255, 107, 157, 0.3);
         }
-        .version-badge {
-            margin-left: auto;
-            display: flex;
+        /* 后台页脚（版本号 + 版权） */
+        .admin-footer {
+            margin-top: 40px;
+            padding: 18px 20px 24px;
+            text-align: center;
+        }
+
+        .admin-footer-content {
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
+            gap: 10px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .admin-footer-copy {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .admin-footer-copy i { color: var(--primary); font-size: 0.8rem; }
+
+        .admin-footer-sep { opacity: 0.5; }
+
+        .admin-footer-version {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             background: rgba(255, 107, 157, 0.12);
             border: 1px solid rgba(255, 107, 157, 0.3);
-            border-radius: 30px;
-            color: var(--primary-light, #ffa8c5);
+            border-radius: 20px;
+            padding: 4px 12px;
+            color: var(--primary-light);
             font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
@@ -260,12 +284,12 @@
             white-space: nowrap;
         }
 
-        .version-badge:hover {
+        .admin-footer-version:hover {
             background: rgba(255, 107, 157, 0.25);
             border-color: rgba(255, 107, 157, 0.5);
         }
 
-        .version-badge .version-dot {
+        .admin-footer-version .version-dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
@@ -279,7 +303,7 @@
             50% { transform: scale(1.4); opacity: 0.6; }
         }
 
-        .version-badge.has-update {
+        .admin-footer-version.has-update {
             border-color: #2ecc71;
             color: #2ecc71;
         }
