@@ -107,6 +107,7 @@ class ExploreController extends BaseController {
         );
         $stmt->execute([$title, $description, $date ?: null, $id]);
 
+        Logger::audit('Update explore', ['id' => $id, 'title' => $title]);
         Cache::clear('api_data');
         $this->success(null, '更新成功');
     }

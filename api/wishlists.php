@@ -107,6 +107,7 @@ class WishlistController extends BaseController {
         );
         $stmt->execute([$title, $description, $date ?: null, $id]);
 
+        Logger::audit('Update wishlist', ['id' => $id, 'title' => $title]);
         Cache::clear('api_data');
         $this->success(null, '更新成功');
     }

@@ -229,13 +229,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const fill = (id, val) => { const el = $(id); if (el) el.textContent = val || ''; };
         fill('name1', name1); fill('name2', name2);
         fill('footer-name1', name1); fill('footer-name2', name2);
-        const date = anniversary?.split('T')[0] || '';
-        fill('anniversary-date', date);
         if (anniversary) {
             const annDate = new Date(anniversary);
             if (isNaN(annDate.getTime())) return;
             const days = Math.ceil(Math.abs(Date.now() - annDate) / 86400000);
-            fill('days-counter', days);
             renderMilestoneBadge(days);
         }
     }
@@ -417,7 +414,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function startTimer() {
         if (!siteData?.coupleInfo) return;
 
-        const timezone = siteData?.settings?.timezone || 'Asia/Shanghai';
         const [y, mo, d] = siteData.coupleInfo.anniversary.split('T')[0].split('-').map(Number);
         const startDate = Date.UTC(y, mo - 1, d, 0, 0, 0);
 
@@ -456,16 +452,24 @@ document.addEventListener('DOMContentLoaded', function() {
             set('seconds', String(seconds).padStart(2, '0'));
         }
 
+        // 每次重启计时器前先清掉旧 interval，避免重复 tick
+        if (timerInterval) clearInterval(timerInterval);
+
         update();
         timerInterval = setInterval(update, 1000);
 
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                clearInterval(timerInterval);
-            } else {
-                timerInterval = setInterval(update, 1000);
-            }
-        });
+        // visibilitychange 监听器只注册一次：用标志位防止累积
+        if (!window.__timerVisibilityBound) {
+            window.__timerVisibilityBound = true;
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+                } else if (!timerInterval) {
+                    timerInterval = setInterval(update, 1000);
+                    update();
+                }
+            });
+        }
     }
 
     function initBackgroundEffects() {

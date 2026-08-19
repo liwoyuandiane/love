@@ -12,6 +12,7 @@ if (!file_exists($envFile)) {
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/csrf.php';
+require_once __DIR__ . '/includes/RateLimiter.php';
 
 ensureSession();
 
@@ -31,15 +32,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'login') {
         $username = trim($_POST['username'] ?? '');
         $password = $_POST['password'] ?? '';
-        
+
         if (empty($username) || empty($password)) {
             $error = '请填写用户名和密码';
         } else {
-            $result = login($username, $password);
-            if ($result['success']) {
-                $success = true;
+            // 表单登录路径同样受 IP 限速保护，防止绕过 API 限速暴力破解
+            $clientIp = RateLimiter::getClientIp();
+            $identifier = 'login:' . $clientIp;
+            if (!RateLimiter::check($identifier)) {
+                $error = '请求过于频繁，请稍后再试';
             } else {
-                $error = $result['message'];
+                $result = login($username, $password);
+                if ($result['success']) {
+                    RateLimiter::clear($identifier);
+                    $success = true;
+                } else {
+                    $error = $result['message'];
+                }
             }
         }
     } elseif ($_POST['action'] === 'logout') {
@@ -66,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             <p>请输入管理员账号信息</p>
             <form id="loginForm">
                 <input type="text" class="login-input" id="usernameInput" placeholder="用户名" maxlength="50" autocomplete="username" required>
-                <input type="password" class="login-input" id="passwordInput" placeholder="密码" maxlength="100" autocomplete="current-password" required>
+                <input type="password" class="login-input" id="passwordInput" placeholder="密码" maxlength="72" autocomplete="current-password" required>
                 <button type="submit" class="login-btn" id="loginBtn">登 录</button>
             </form>
             <p class="login-error" id="loginError">用户名或密码错误</p>
@@ -377,7 +386,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     </div>
                     <div class="form-group">
                         <label>新密码</label>
-                        <input type="password" class="form-input" id="adminPassword" required minlength="8" maxlength="100" placeholder="请输入新密码（至少8位）" autocomplete="new-password">
+                        <input type="password" class="form-input" id="adminPassword" required minlength="8" maxlength="72" placeholder="请输入新密码（8-72位，需包含字母和数字）" autocomplete="new-password">
                     </div>
                 </div>
                 <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> 保存修改</button>

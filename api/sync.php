@@ -1,14 +1,15 @@
 <?php
 /**
- * API - 数据同步
+ * API - 会话保活
  *
- * 直接操作数据库，前端应每60秒调用一次
+ * 后台每 60 秒调用一次，用于维持 PHP 会话活跃（防止 30 分钟超时被登出）。
+ * 早期版本在此对全部数据表做 COUNT(*) 统计，但并无实际用处，
+ * 反而每 60 秒触发多次数据库查询，已移除。
  */
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/auth.php';
-require_once __DIR__ . '/../includes/csrf.php';
 
 header('Content-Type: application/json');
 
@@ -32,60 +33,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-verifyCSRF();
+// 仅刷新会话活动时间即可，无需任何数据库查询
+$_SESSION['last_activity'] = time();
 
-$action = $_GET['action'] ?? 'status';
-
-try {
-    match($action) {
-        'status' => handleStatus(),
-        default => handleStatus()
-    };
-} catch (Exception $e) {
-    error_log('Sync API error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'error' => ['code' => 'SERVER_ERROR', 'message' => '同步失败']
-    ]);
-}
-
-function handleStatus(): void {
-    try {
-        $db = getDB();
-
-        $allowedTables = ['anniversaries', 'wishlists', 'explores', 'photos', 'music', 'couple_info'];
-        $stats = [];
-
-        foreach ($allowedTables as $table) {
-            try {
-                $stmt = $db->prepare("SELECT COUNT(*) as count FROM `$table`");
-                $stmt->execute();
-                $result = $stmt->fetch();
-                $stats[$table] = [
-                    'count' => intval($result['count']),
-                    'status' => 'ok'
-                ];
-            } catch (Exception $e) {
-                $stats[$table] = [
-                    'count' => 0,
-                    'status' => 'error'
-                ];
-            }
-        }
-
-        echo json_encode([
-            'success' => true,
-            'data' => [
-                'tables' => $stats,
-                'timestamp' => date('Y-m-d H:i:s')
-            ]
-        ]);
-    } catch (Exception $e) {
-        error_log('handleStatus error: ' . $e->getMessage());
-        echo json_encode([
-            'success' => false,
-            'error' => ['code' => 'SERVER_ERROR', 'message' => '状态检查失败']
-        ]);
-    }
-}
+echo json_encode([
+    'success' => true,
+    'data' => [
+        'timestamp' => date('Y-m-d H:i:s')
+    ]
+]);

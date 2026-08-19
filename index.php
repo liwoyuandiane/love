@@ -14,6 +14,11 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/csrf.php';
 ensureSession();
+
+// 静态资源版本号：跟随文件修改时间自动变化，避免浏览器缓存旧版本
+$styleVersion = filemtime(__DIR__ . '/assets/css/style.css') ?: APP_VERSION;
+$jsVersion = filemtime(__DIR__ . '/assets/js/main.js') ?: APP_VERSION;
+$utilsVersion = filemtime(__DIR__ . '/assets/js/utils.js') ?: APP_VERSION;
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -29,7 +34,7 @@ ensureSession();
     <link rel="manifest" href="/assets/manifest.json">
     <link rel="stylesheet" href="/assets/css/fonts.css">
     <link rel="stylesheet" href="/assets/css/fontawesome.css">
-    <link rel="stylesheet" href="/assets/css/style.css?v=20260419">
+    <link rel="stylesheet" href="/assets/css/style.css?v=<?php echo $styleVersion; ?>">
 </head>
 <body>
     <script>
@@ -175,7 +180,7 @@ ensureSession();
         <div class="lightbox-caption" id="lightbox-caption"></div>
     </div>
 
-    <script src="/assets/js/utils.js"></script>
-    <script src="/assets/js/main.js"></script>
+    <script src="/assets/js/utils.js?v=<?php echo $utilsVersion; ?>"></script>
+    <script src="/assets/js/main.js?v=<?php echo $jsVersion; ?>"></script>
 </body>
 </html>

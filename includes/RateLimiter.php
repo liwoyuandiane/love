@@ -140,17 +140,9 @@ class RateLimiter {
             return self::$maxAttempts;
         }
 
-        $content = file_get_contents($file);
-        if ($content === false) {
-            return self::$maxAttempts;
-        }
+        $data = json_decode((string)file_get_contents($file), true) ?: [];
 
-        $data = json_decode($content, true);
-        if (!$data) {
-            return self::$maxAttempts;
-        }
-
-        if ($data['locked_until'] && $data['locked_until'] > $now) {
+        if (($data['locked_until'] ?? null) && $data['locked_until'] > $now) {
             return 0;
         }
 
@@ -179,31 +171,113 @@ class RateLimiter {
         }
     }
 
+    /**
+     * 获取客户端真实 IP
+     *
+     * 默认只信任 REMOTE_ADDR。若部署在可信反向代理之后，
+     * 可通过环境变量 TRUSTED_PROXIES 配置信任的代理来源地址
+     * （逗号分隔，支持 IP/CIDR/精确网段，例如 "10.0.0.0/8,172.16.0.0/12"），
+     * 只有来自可信代理的请求才使用 X-Forwarded-For / X-Real-IP 头，
+     * 防止攻击者伪造请求头绕过限速。
+     */
     public static function getClientIp(): string {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        $ip = preg_replace('/[^0-9a-fA-F:.]/', '', $ip) ?: '0.0.0.0';
 
-        // 仅在信任的代理环境下（内网）才使用代理头
-        // 防止攻击者伪造 X-Forwarded-For 绕过限速
-        $isTrustedProxy = false;
-        $trustedProxies = ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'];
+        // 判断来源是否为受信任代理
+        if (!self::isTrustedProxy($ip)) {
+            return $ip;
+        }
 
-        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR']) && $isTrustedProxy) {
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
             $forwardedFor = $_SERVER['HTTP_X_FORWARDED_FOR'];
             $ips = array_map('trim', explode(',', $forwardedFor));
+            // 从右向左跳过同样受信任的代理，取最左侧真实客户端 IP
+            for ($i = count($ips) - 1; $i >= 0; $i--) {
+                $candidate = filter_var($ips[$i], FILTER_VALIDATE_IP);
+                if ($candidate !== false && !self::isTrustedProxy($candidate)) {
+                    return preg_replace('/[^0-9a-fA-F:.]/', '', $candidate) ?: $ip;
+                }
+            }
             $firstIp = filter_var($ips[0], FILTER_VALIDATE_IP);
             if ($firstIp !== false) {
-                return $firstIp;
+                return preg_replace('/[^0-9a-fA-F:.]/', '', $firstIp) ?: $ip;
             }
         }
 
-        if (!empty($_SERVER['HTTP_X_REAL_IP']) && $isTrustedProxy) {
+        if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
             $realIp = trim($_SERVER['HTTP_X_REAL_IP']);
             $validatedIp = filter_var($realIp, FILTER_VALIDATE_IP);
-            if ($validatedIp !== false) {
-                return $validatedIp;
+            if ($validatedIp !== false && !self::isTrustedProxy($validatedIp)) {
+                return preg_replace('/[^0-9a-fA-F:.]/', '', $validatedIp) ?: $ip;
             }
         }
 
-        return preg_replace('/[^0-9a-fA-F:.]/', '', $ip) ?: '0.0.0.0';
+        return $ip;
+    }
+
+    private static function isTrustedProxy(string $ip): bool {
+        // 默认仅信任本机回环（本地开发的 php -S 等场景）
+        $trusted = trim((string)getenv('TRUSTED_PROXIES'));
+        if ($trusted === '') {
+            $trusted = '127.0.0.1,::1';
+        }
+
+        $parts = array_map('trim', explode(',', $trusted));
+        foreach ($parts as $part) {
+            if ($part === '') continue;
+
+            // CIDR 形式如 10.0.0.0/8、172.16.0.0/12
+            if (str_contains($part, '/')) {
+                if (self::ipInCidr($ip, $part)) {
+                    return true;
+                }
+                continue;
+            }
+            if ($ip === $part) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static function ipInCidr(string $ip, string $cidr): bool {
+        [$subnet, $bits] = array_pad(explode('/', $cidr, 2), 2, null);
+        if ($bits === null || !ctype_digit($bits)) {
+            return false;
+        }
+        $bits = (int)$bits;
+
+        $ipBin = @inet_pton($ip);
+        $subnetBin = @inet_pton($subnet);
+        if ($ipBin === false || $subnetBin === false) {
+            return false;
+        }
+
+        $len = strlen($ipBin);
+        if ($len !== strlen($subnetBin)) {
+            return false;
+        }
+        if ($bits > $len * 8) {
+            $bits = $len * 8;
+        }
+
+        $fullBytes = intdiv($bits, 8);
+        $remainBits = $bits % 8;
+
+        if ($fullBytes > 0 && substr($ipBin, 0, $fullBytes) !== substr($subnetBin, 0, $fullBytes)) {
+            return false;
+        }
+
+        if ($remainBits > 0) {
+            $mask = 0xFF << (8 - $remainBits) & 0xFF;
+            $ipByte = ord($ipBin[$fullBytes]);
+            $subnetByte = ord($subnetBin[$fullBytes]);
+            if (($ipByte & $mask) !== ($subnetByte & $mask)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

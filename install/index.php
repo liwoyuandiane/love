@@ -9,6 +9,21 @@ if (file_exists($envFile)) {
     exit;
 }
 
+/**
+ * 校验数据库标识符（数据库名/用户名），只允许安全字符
+ * 防止通过 DROP/CREATE DATABASE 拼接注入 SQL
+ */
+function sanitizeIdentifier(string $value): ?string {
+    $value = trim($value);
+    if ($value === '' || strlen($value) > 64) {
+        return null;
+    }
+    if (!preg_match('/^[a-zA-Z0-9_\-]+$/', $value)) {
+        return null;
+    }
+    return $value;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'test_connection') {
         header('Content-Type: application/json');
@@ -20,6 +35,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         if (empty($dbHost) || empty($dbName) || empty($dbUser)) {
             echo json_encode(['success' => false, 'message' => '请填写完整的数据库信息']);
+            exit;
+        }
+        if (sanitizeIdentifier($dbName) === null || sanitizeIdentifier($dbUser) === null) {
+            echo json_encode(['success' => false, 'message' => '数据库名称/用户名只能包含字母、数字、下划线或中划线']);
+            exit;
+        }
+        if (!ctype_digit($dbPort) || intval($dbPort) < 1 || intval($dbPort) > 65535) {
+            echo json_encode(['success' => false, 'message' => '端口号无效']);
             exit;
         }
 
@@ -42,7 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 echo json_encode(['success' => true, 'message' => '连接成功，数据库不存在，将自动创建', 'db_exists' => false]);
             }
         } catch (PDOException $e) {
-            echo json_encode(['success' => false, 'message' => '连接失败：' . $e->getMessage()]);
+            // 不向客户端暴露具体连接错误细节，仅提示通用信息
+            echo json_encode(['success' => false, 'message' => '数据库连接失败，请检查主机、端口、账号密码是否正确']);
         }
         exit;
     }
@@ -57,17 +81,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $adminUser = trim($_POST['admin_user'] ?? '');
         $adminPass = trim($_POST['admin_pass'] ?? '');
 
-        $dbHost = preg_replace('/[\r\n\'\"`;]/', '', $dbHost);
-        $dbName = preg_replace('/[\r\n\'\"`;]/', '', $dbName);
-        $dbUser = preg_replace('/[\r\n\'\"`;]/', '', $dbUser);
-        $adminUser = preg_replace('/[\r\n\'\"`;]/', '', $adminUser);
-
         if (empty($dbHost) || empty($dbName) || empty($dbUser) || empty($adminUser) || empty($adminPass)) {
             echo json_encode(['success' => false, 'message' => '请填写所有必填项']);
             exit;
         }
-        if (strlen($adminPass) < 8 || !preg_match('/[A-Za-z]/', $adminPass) || !preg_match('/[0-9]/', $adminPass)) {
-            echo json_encode(['success' => false, 'message' => '密码至少8位，需包含字母和数字']);
+        // 标识符白名单校验（数据库名/用户名/管理员用户名），防止 SQL 注入
+        if (sanitizeIdentifier($dbName) === null || sanitizeIdentifier($dbUser) === null) {
+            echo json_encode(['success' => false, 'message' => '数据库名称/用户名只能包含字母、数字、下划线或中划线']);
+            exit;
+        }
+        $adminUser = sanitizeIdentifier($adminUser);
+        if ($adminUser === null) {
+            echo json_encode(['success' => false, 'message' => '管理员用户名只能包含字母、数字、下划线或中划线']);
+            exit;
+        }
+        if (!ctype_digit($dbPort) || intval($dbPort) < 1 || intval($dbPort) > 65535) {
+            echo json_encode(['success' => false, 'message' => '端口号无效']);
+            exit;
+        }
+        // 密码强度：8-72 位（bcrypt 上限 72 字节），需包含字母和数字
+        if (strlen($adminPass) < 8 || strlen($adminPass) > 72) {
+            echo json_encode(['success' => false, 'message' => '密码长度需为 8-72 位']);
+            exit;
+        }
+        if (!preg_match('/[A-Za-z]/', $adminPass) || !preg_match('/[0-9]/', $adminPass)) {
+            echo json_encode(['success' => false, 'message' => '密码需包含字母和数字']);
+            exit;
+        }
+        if (strlen($dbPass) > 256 || strlen($dbHost) > 200) {
+            echo json_encode(['success' => false, 'message' => '输入内容过长']);
             exit;
         }
 
@@ -172,16 +214,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt = $pdo->prepare("INSERT INTO `admin_users` (`username`, `password`, `role`) VALUES (?, ?, 'admin')");
             $stmt->execute([$adminUser, $hashedPassword]);
 
+            // 写入 .env 时移除换行符（防止注入环境变量）
             $dbPass = preg_replace('/[\r\n]/', '', $dbPass);
             $envContent = "DB_HOST=$dbHost\nDB_PORT=$dbPort\nDB_NAME=$dbName\nDB_USER=$dbUser\nDB_PASS=$dbPass\n";
 
             if (file_put_contents($envFile, $envContent)) {
+                // 敏感配置仅所有者可读写
+                @chmod($envFile, 0600);
                 echo json_encode(['success' => true, 'message' => '安装成功']);
             } else {
                 echo json_encode(['success' => false, 'message' => '配置文件写入失败']);
             }
         } catch (PDOException $e) {
-            echo json_encode(['success' => false, 'message' => '数据库错误: ' . $e->getMessage()]);
+            // 不向客户端暴露底层错误细节
+            echo json_encode(['success' => false, 'message' => '数据库错误，请检查数据库配置后重试']);
         }
         exit;
     }
@@ -304,19 +350,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         <div class="form-group">
             <label>数据库主机 *</label>
-            <input type="text" id="dbHost" placeholder="localhost 或 IP" required>
+            <input type="text" id="dbHost" placeholder="localhost 或 IP" required maxlength="200">
         </div>
         <div class="form-group">
             <label>数据库端口</label>
-            <input type="number" id="dbPort" value="3306" placeholder="3306">
+            <input type="number" id="dbPort" value="3306" placeholder="3306" min="1" max="65535">
         </div>
         <div class="form-group">
             <label>数据库名称 *</label>
-            <input type="text" id="dbName" placeholder="数据库名称" required>
+            <input type="text" id="dbName" placeholder="仅字母数字下划线中划线" required maxlength="64" pattern="[A-Za-z0-9_\-]+">
         </div>
         <div class="form-group">
             <label>数据库用户名 *</label>
-            <input type="text" id="dbUser" placeholder="用户名" required autocomplete="username">
+            <input type="text" id="dbUser" placeholder="仅字母数字下划线中划线" required maxlength="64" pattern="[A-Za-z0-9_\-]+" autocomplete="username">
         </div>
         <div class="form-group">
             <label>数据库密码</label>
@@ -337,11 +383,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             <h3><i class="fas fa-user-shield"></i> 管理员账号</h3>
             <div class="form-group">
                 <label>用户名 *</label>
-                <input type="text" id="adminUser" placeholder="登录用户名" required>
+                <input type="text" id="adminUser" placeholder="登录用户名" required maxlength="50" pattern="[A-Za-z0-9_\-]+">
             </div>
             <div class="form-group">
                 <label>密码 *</label>
-                <input type="password" id="adminPass" placeholder="至少8位" minlength="8" required autocomplete="new-password">
+                <input type="password" id="adminPass" placeholder="8-72位，含字母和数字" minlength="8" maxlength="72" required autocomplete="new-password">
             </div>
 
             <button type="button" class="btn" id="installBtn">
@@ -449,7 +495,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         const adminPass = document.getElementById('adminPass').value;
 
         if (!adminUser || !adminPass) { alert('请填写管理员信息'); return; }
-        if (adminPass.length < 8) { alert('密码至少8位'); return; }
+        if (adminPass.length < 8 || adminPass.length > 72) { alert('密码长度需为 8-72 位'); return; }
 
         if (dbExists) {
             if (!confirm('警告：即将清空数据库所有数据！此操作不可恢复！\n\n确定要继续吗？')) {

@@ -123,6 +123,7 @@ class AnniversaryController extends BaseController {
         );
         $stmt->execute([$title, $date, $description, $type, $reminderDays, $id]);
 
+        Logger::audit('Update anniversary', ['id' => $id, 'title' => $title]);
         Cache::clear('api_data');
         $this->success(null, '更新成功');
     }

@@ -13,7 +13,7 @@ ensureSession();
 
 if (!isAdmin()) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'error' => '需要管理员权限']);
+    echo json_encode(['success' => false, 'error' => ['code' => 'FORBIDDEN', 'message' => '需要管理员权限']]);
     exit;
 }
 
@@ -33,5 +33,6 @@ try {
     echo json_encode(['success' => true, 'message' => 'Migration completed successfully']);
 } catch (Exception $e) {
     Logger::error('Migration failed: ' . $e->getMessage());
-    echo json_encode(['success' => false, 'error' => 'Migration failed']);
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => ['code' => 'SERVER_ERROR', 'message' => 'Migration failed']]);
 }

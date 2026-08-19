@@ -51,3 +51,28 @@
         Header set Cache-Control "public, max-age=604800"
     </FilesMatch>
 </IfModule>
+
+# 禁止直接访问敏感文件（.env、.git、日志、缓存、临时文件）
+<FilesMatch "^(\.env|\.env\.example|\.gitignore|\.dockerignore|Dockerfile|docker-compose\.yml|CLAUDE\.md|composer\.(json|lock)|package\.json|package-lock\.json)$">
+    Require all denied
+</FilesMatch>
+
+# 禁止访问隐藏文件与目录（.git、.env.*、.gitignore 等）
+<IfModule mod_rewrite.c>
+    RewriteRule ^\.(?!well-known) - [F,L,NC]
+</IfModule>
+
+# 禁止目录列出
+Options -Indexes
+
+# 禁止执行上传目录中的脚本（纵深防御：即使上传了 .php 也不解析）
+<IfModule mod_rewrite.c>
+    RewriteRule ^assets/uploads/.*\.(php|phtml|php[0-9]|pl|py|cgi|sh)$ - [F,L,NC]
+</IfModule>
+
+# 禁止 PHP 在日志与缓存目录执行
+<FilesMatch "^(cache|logs)">
+    <IfModule mod_php.c>
+        php_flag engine off
+    </IfModule>
+</FilesMatch>

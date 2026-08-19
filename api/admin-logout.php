@@ -14,7 +14,7 @@ ensureSession();
 
 if (!isLoggedIn()) {
     http_response_code(401);
-    echo json_encode(['success' => false, 'error' => '未登录']);
+    echo json_encode(['success' => false, 'error' => ['code' => 'UNAUTHORIZED', 'message' => '未登录']]);
     exit;
 }
 

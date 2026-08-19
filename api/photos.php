@@ -119,6 +119,7 @@ class PhotoController extends BaseController {
         $stmt->execute([$id]);
         $newItem = $stmt->fetch();
 
+        Logger::audit('Upload photo', ['id' => $id, 'file' => $filename, 'caption' => $caption]);
         Cache::clear('api_data');
         $this->success($newItem, '上传成功', 201);
     }
@@ -137,7 +138,7 @@ class PhotoController extends BaseController {
             $this->error($errors[0], 'VALIDATION_ERROR');
         }
 
-        if (!$this->isUrlSafe($url)) {
+        if (!isUrlSafe($url)) {
             $this->error('不允许的 URL', 'VALIDATION_ERROR');
         }
 
@@ -164,49 +165,9 @@ class PhotoController extends BaseController {
         $stmt->execute([$id]);
         $newItem = $stmt->fetch();
 
+        Logger::audit('Add photo from URL', ['id' => $id, 'url' => $url]);
         Cache::clear('api_data');
         $this->success($newItem, '添加成功', 201);
-    }
-
-    private function isUrlSafe(string $url): bool {
-        $parsed = parse_url($url);
-        if (!$parsed || !isset($parsed['scheme']) || !isset($parsed['host'])) {
-            return false;
-        }
-
-        $scheme = strtolower($parsed['scheme']);
-        if (!in_array($scheme, ['http', 'https'])) {
-            return false;
-        }
-
-        $host = strtolower($parsed['host']);
-
-        $privateRanges = [
-            'localhost', '127.0.0.1', '::1', '0.0.0.0',
-            '10.', '172.16.', '172.17.', '172.18.', '172.19.',
-            '172.20.', '172.21.', '172.22.', '172.23.',
-            '172.24.', '172.25.', '172.26.', '172.27.',
-            '172.28.', '172.29.', '172.30.', '172.31.',
-            '192.168.', '169.254.',
-            'fc00:', 'fd00:', 'fe80:', 'fec0:',
-        ];
-
-        foreach ($privateRanges as $range) {
-            if (str_starts_with($host, $range)) {
-                return false;
-            }
-        }
-
-        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-            return true;
-        }
-
-        $ip = gethostbyname($host);
-        if ($ip === $host) {
-            return false;
-        }
-
-        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
     }
 
     private function update(): void {
@@ -227,7 +188,7 @@ class PhotoController extends BaseController {
             if (!filter_var($url, FILTER_VALIDATE_URL)) {
                 $this->error('无效的图片链接', 'VALIDATION_ERROR');
             }
-            if (!$this->isUrlSafe($url)) {
+            if (!isUrlSafe($url)) {
                 $this->error('不允许的 URL', 'VALIDATION_ERROR');
             }
             $stmt = $this->db->prepare("UPDATE photos SET caption = ?, url = ?, source_type = 'url', updated_at = NOW() WHERE id = ?");
@@ -237,6 +198,7 @@ class PhotoController extends BaseController {
             $stmt->execute([$caption, $id]);
         }
 
+        Logger::audit('Update photo', ['id' => $id, 'url' => $url]);
         Cache::clear('api_data');
         $this->success(null, '更新成功');
     }

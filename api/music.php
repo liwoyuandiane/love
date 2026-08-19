@@ -26,6 +26,8 @@ class MusicController extends BaseController {
                 'PUT' => $this->update(),
                 default => $this->error('不支持的方法', 'METHOD_NOT_ALLOWED', 405)
             };
+        } catch (ValidationException $e) {
+            $this->error($e->getMessage(), 'VALIDATION_ERROR');
         } catch (Exception $e) {
             Logger::error('Music API error: ' . $e->getMessage());
             $this->serverError();
@@ -68,13 +70,23 @@ class MusicController extends BaseController {
             $sourceType = 'url';
         }
 
-        if ($sourceType === 'url' && $sourceUrl !== '' && !filter_var($sourceUrl, FILTER_VALIDATE_URL)) {
-            $this->error('无效的音乐链接', 'VALIDATION_ERROR');
-            return;
+        if ($sourceType === 'url' && $sourceUrl !== '') {
+            if (!filter_var($sourceUrl, FILTER_VALIDATE_URL)) {
+                $this->error('无效的音乐链接', 'VALIDATION_ERROR');
+                return;
+            }
+            if (!isUrlSafe($sourceUrl)) {
+                $this->error('不允许的 URL', 'VALIDATION_ERROR');
+                return;
+            }
         }
 
-        if ($backupUrl !== '' && !filter_var($backupUrl, FILTER_VALIDATE_URL)) {
-            $backupUrl = '';
+        if ($backupUrl !== '') {
+            if (!filter_var($backupUrl, FILTER_VALIDATE_URL)) {
+                $backupUrl = '';
+            } elseif (!isUrlSafe($backupUrl)) {
+                $backupUrl = '';
+            }
         }
 
         $stmt = $this->db->prepare(
@@ -82,7 +94,7 @@ class MusicController extends BaseController {
         );
         $stmt->execute([$sourceType, $sourceUrl, $backupUrl, $title, $artist]);
 
-        Logger::audit('Update music settings', ['title' => $title]);
+        Logger::audit('Update music settings', ['title' => $title, 'source_type' => $sourceType]);
         Cache::clear('api_data');
         $this->success(null, '保存成功');
     }

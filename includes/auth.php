@@ -9,6 +9,9 @@ define('SALT_ROUNDS', 12);
 define('MAX_LOGIN_ATTEMPTS', 5);
 define('LOCKOUT_DURATION', 15 * 60);
 
+// bcrypt 只使用前 72 字节，超长密码会被静默截断
+define('MAX_PASSWORD_BYTES', 72);
+
 function isLoggedIn(): bool {
     return isset($_SESSION['user_id']);
 }
@@ -35,7 +38,8 @@ function requireAdmin(): void {
     requireLogin();
     if (($_SESSION['user_role'] ?? 'admin') !== 'admin') {
         header('HTTP/1.1 403 Forbidden');
-        echo json_encode(['success' => false, 'error' => ['code' => 'FORBIDDEN', 'message' => '需要管理员权限']]);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => ['code' => 'FORBIDDEN', 'message' => '需要管理员权限']], JSON_UNESCAPED_UNICODE);
         exit;
     }
 }
@@ -58,6 +62,10 @@ function verifyPassword(string $password, string $hash): bool {
 
 function isPasswordStrong(string $password): bool {
     if (strlen($password) < 8) {
+        return false;
+    }
+    // bcrypt 只取前 72 字节，超长密码会被静默截断导致语义不一致
+    if (strlen($password) > MAX_PASSWORD_BYTES) {
         return false;
     }
     if (!preg_match('/[A-Za-z]/', $password)) {
@@ -86,7 +94,9 @@ function clearLoginAttempts(PDO $pdo, string $username): void {
 }
 
 function setLockout(PDO $pdo, string $username, int $until): void {
-    $datetime = gmdate('Y-m-d H:i:s', $until);
+    // 必须用本地时区写入：锁定时间在 login() 中通过 strtotime() 按本地时区解析。
+    // 若用 gmdate 写 UTC，strtotime 会按 Asia/Shanghai 解析，锁定会提前 8 小时判定过期而失效。
+    $datetime = date('Y-m-d H:i:s', $until);
     $stmt = $pdo->prepare("UPDATE admin_users SET locked_until = ? WHERE username = ?");
     $stmt->execute([$datetime, $username]);
 }
@@ -104,7 +114,11 @@ function login(string $username, string $password): array {
     
     if ($user['locked_until']) {
         $lockedTime = strtotime($user['locked_until']);
-        if ($lockedTime > time()) {
+        if ($lockedTime === false && strtotime($user['locked_until'] . ' UTC') !== false) {
+            // 兼容旧版本用 UTC 写入的锁定时间
+            $lockedTime = strtotime($user['locked_until'] . ' UTC');
+        }
+        if ($lockedTime !== false && $lockedTime > time()) {
             $remaining = ceil(($lockedTime - time()) / 60);
             return ['success' => false, 'message' => "账号已锁定，请 {$remaining} 分钟后再试"];
         }
