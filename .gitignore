@@ -18,6 +18,7 @@ cache/*
 # Docker data directories (bind mount, stored in project dir)
 uploads/
 sessions/
+love/
 
 # Local agent guide (NOT uploaded to GitHub)
 CLAUDE.md
