@@ -241,6 +241,49 @@
             background: rgba(255, 107, 157, 0.15);
             border-color: rgba(255, 107, 157, 0.3);
         }
+        .version-badge {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(255, 107, 157, 0.12);
+            border: 1px solid rgba(255, 107, 157, 0.3);
+            border-radius: 30px;
+            color: var(--primary-light, #ffa8c5);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            position: relative;
+            white-space: nowrap;
+        }
+
+        .version-badge:hover {
+            background: rgba(255, 107, 157, 0.25);
+            border-color: rgba(255, 107, 157, 0.5);
+        }
+
+        .version-badge .version-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #2ecc71;
+            box-shadow: 0 0 8px rgba(46, 204, 113, 0.8);
+            animation: versionPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes versionPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.6; }
+        }
+
+        .version-badge.has-update {
+            border-color: #2ecc71;
+            color: #2ecc71;
+        }
+
         
         /* Tabs */
         .tabs {

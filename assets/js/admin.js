@@ -30,7 +30,47 @@ const clearFrontendCache = () => {
     } catch (e) {}
 };
 
-document.addEventListener('DOMContentLoaded', () => { checkAuthStatus(); setupEventListeners(); });
+document.addEventListener('DOMContentLoaded', () => { checkAuthStatus(); setupEventListeners(); checkUpdate(); });
+    // ===== 版本检查（GitHub Releases，失败静默） =====
+    function compareVersions(a, b) {
+        const pa = String(a).replace(/^v/i, '').split('.').map(Number);
+        const pb = String(b).replace(/^v/i, '').split('.').map(Number);
+        const n = Math.max(pa.length, pb.length);
+        for (let i = 0; i < n; i++) {
+            const x = pa[i] || 0, y = pb[i] || 0;
+            if (x > y) return 1;
+            if (x < y) return -1;
+        }
+        return 0;
+    }
+
+    async function checkUpdate(manual = false) {
+        const badge = $('versionBadge');
+        const dot = $('versionDot');
+        if (!badge) return;
+        try {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 6000);
+            const res = await fetch('https://api.github.com/repos/' + (window.GITHUB_REPO || 'liwoyuandiane/love') + '/releases/latest', { signal: ctrl.signal });
+            clearTimeout(timer);
+            if (!res.ok) { badge.title = '当前版本 v' + (window.APP_VERSION || '') + '（未连接到 GitHub，无法检查更新）'; return; }
+            const data = await res.json();
+            const latest = (data.tag_name || '').replace(/^v/i, '');
+            const current = (window.APP_VERSION || '').replace(/^v/i, '');
+            if (latest && compareVersions(latest, current) > 0) {
+                badge.classList.add('has-update');
+                if (dot) { dot.style.display = 'inline-block'; dot.title = '发现新版本 v' + latest; }
+                badge.title = '当前 v' + current + '，最新 v' + latest + '（点击前往发布页）';
+                if (manual) window.open('https://github.com/' + (window.GITHUB_REPO || '') + '/releases/latest', '_blank');
+            } else {
+                badge.title = '已是最新版本 v' + current;
+                if (manual) showToast('当前已是最新版本 v' + current);
+            }
+        } catch (e) {
+            badge.title = '当前版本 v' + (window.APP_VERSION || '') + '（网络异常，无法检查更新）';
+        }
+    }
+
 
 const checkAuthStatus = async () => {
     try {

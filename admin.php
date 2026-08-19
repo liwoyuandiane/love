@@ -92,6 +92,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <div class="admin-container <?php if ($success) echo 'active'; ?>" id="adminContainer" <?php if (!$success) echo 'style="display:none"'; ?>>
         <div class="admin-header">
             <h1><i class="fas fa-cog"></i> 管理面板</h1>
+            <button type="button" class="version-badge" id="versionBadge" title="当前版本，点击检查更新" onclick="checkUpdate(true)">
+                <i class="fas fa-tag"></i>
+                <span>v<?php echo APP_VERSION; ?></span>
+                <span class="version-dot" id="versionDot" style="display:none" title="发现新版本"></span>
+            </button>
             <div class="header-actions">
                 <a href="/" class="back-link"><i class="fas fa-home"></i> <span>返回首页</span></a>
                 <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> <span>退出</span></button>
@@ -470,6 +475,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     <script>
         window.CSRF_TOKEN = <?php echo json_encode(CSRF::generate()); ?>;
+        window.APP_VERSION = <?php echo json_encode(APP_VERSION); ?>;
+        window.GITHUB_REPO = 'liwoyuandiane/love';
         window.CURRENT_USER_ROLE = <?php echo json_encode($currentUserRole ?? 'user'); ?>;
         window.CURRENT_USER_ID = <?php echo intval($currentUserId); ?>;
         window.IS_ADMIN = <?php echo ($currentUserRole ?? 'user') === 'admin' ? 'true' : 'false'; ?>;
