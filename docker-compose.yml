@@ -6,17 +6,9 @@ services:
     ports:
       - "${WEB_PORT:-8000}:80"
     volumes:
-      # 所有数据统一存放在项目目录（love/）下，方便查找和管理
-      - ./uploads:/var/www/html/assets/uploads
-      - ./cache:/var/www/html/cache
-      - ./logs:/var/www/html/logs
-      - ./sessions:/var/lib/php/sessions
-      - ./.env:/var/www/html/.env:ro
+      # 一键数据目录：把宿主机 love/ 整体挂载到 /data
+      # 容器启动时自动检测 love/.env（无则进安装向导），自动创建 uploads/cache/logs/sessions
+      - ./:/data
     environment:
-      # 从 .env 读取数据库连接（.env 已被 .gitignore 排除，不会进 git）
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT:-3306}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASS: ${DB_PASS}
+      DATA_DIR: /data
     restart: always

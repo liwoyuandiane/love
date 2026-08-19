@@ -3,7 +3,9 @@
  * 后台管理页面
  */
 
-$envFile = __DIR__ . '/.env';
+// 检测安装（.env 路径统一解析：Docker 数据目录优先，见 env.php）
+require_once __DIR__ . '/env.php';
+$envFile = resolveEnvFile();
 if (!file_exists($envFile)) {
     header('Location: /install/');
     exit;

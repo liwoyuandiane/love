@@ -16,6 +16,17 @@ $health = [
     'checks' => []
 ];
 
+// 未安装（无 .env）：容器存活即健康，引导访问安装向导（避免 HEALTHCHECK 持续失败）
+if (!file_exists(resolveEnvFile())) {
+    $health['checks']['install'] = [
+        'status' => 'ok',
+        'message' => '系统未安装，请访问 /install/ 完成安装向导'
+    ];
+    http_response_code(200);
+    echo json_encode($health, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 try {
     $db = getDB();
     $db->query("SELECT 1");

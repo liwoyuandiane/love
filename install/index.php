@@ -3,7 +3,9 @@
  * 安装向导
  */
 
-$envFile = __DIR__ . '/../.env';
+// .env 路径统一解析（Docker 数据目录优先，见 env.php）：安装成功后配置会持久化到宿主机 love/ 目录
+require_once __DIR__ . '/../env.php';
+$envFile = resolveEnvFile();
 if (file_exists($envFile)) {
     header('Location: /');
     exit;
@@ -221,7 +223,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if (file_put_contents($envFile, $envContent)) {
                 // 敏感配置仅所有者可读写
                 @chmod($envFile, 0600);
-                echo json_encode(['success' => true, 'message' => '安装成功']);
+                echo json_encode(['success' => true, 'message' => '安装成功，配置已写入 ' . basename(dirname($envFile)) . '/.env']);
             } else {
                 echo json_encode(['success' => false, 'message' => '配置文件写入失败']);
             }

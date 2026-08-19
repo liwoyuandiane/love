@@ -45,6 +45,9 @@ RUN rm -f /etc/nginx/conf.d/default.conf
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# 数据目录（一键启动模式：宿主机 love/ 挂载到 /data，.env 与 uploads/cache/logs/sessions 均在其中）
+ENV DATA_DIR=/data
+
 # 会话存储：持久卷挂载到 /var/lib/php/sessions，容器重建后登录态不丢失
 RUN mkdir -p /var/lib/php/sessions \
     && chown -R www-data:www-data /var/lib/php/sessions \

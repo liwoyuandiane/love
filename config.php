@@ -11,8 +11,9 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data: https:; img-src 'self' data: https:; connect-src 'self'; media-src 'self' https://music.163.com https://*.music.126.net http://*.music.126.net;");
 
-// 加载环境变量
-$envFile = __DIR__ . '/.env';
+// 加载环境变量（.env 路径由 env.php 统一解析：Docker 数据目录优先）
+require_once __DIR__ . '/env.php';
+$envFile = resolveEnvFile();
 if (file_exists($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
@@ -57,7 +58,7 @@ if (session_status() === PHP_SESSION_NONE) {
 date_default_timezone_set('Asia/Shanghai');
 
 // 版本号
-define('APP_VERSION', '3.0.0');
+define('APP_VERSION', '3.2.0');
 
 // 加载日志类
 require_once __DIR__ . '/includes/logger.php';
