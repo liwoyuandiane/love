@@ -16,10 +16,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/csrf.php';
 ensureSession();
 
-// 静态资源版本号：跟随文件修改时间自动变化，避免浏览器缓存旧版本
-$styleVersion = filemtime(__DIR__ . '/assets/css/style.css') ?: APP_VERSION;
-$jsVersion = filemtime(__DIR__ . '/assets/js/main.js') ?: APP_VERSION;
-$utilsVersion = filemtime(__DIR__ . '/assets/js/utils.js') ?: APP_VERSION;
+// 静态资源版本号统一由 asset() 生成（includes/assets.php），自动跟随文件 mtime
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
@@ -32,10 +29,10 @@ $utilsVersion = filemtime(__DIR__ . '/assets/js/utils.js') ?: APP_VERSION;
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="专属空间">
-    <link rel="manifest" href="/assets/manifest.json">
-    <link rel="stylesheet" href="/assets/css/fonts.css">
-    <link rel="stylesheet" href="/assets/css/fontawesome.css">
-    <link rel="stylesheet" href="/assets/css/style.css?v=<?php echo $styleVersion; ?>">
+    <link rel="manifest" href="<?php echo asset('assets/manifest.json'); ?>">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/fonts.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/fontawesome.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/style.css'); ?>">
     <script>
         (function () {
             try {
@@ -193,7 +190,7 @@ $utilsVersion = filemtime(__DIR__ . '/assets/js/utils.js') ?: APP_VERSION;
         <div class="lightbox-caption" id="lightbox-caption"></div>
     </div>
 
-    <script src="/assets/js/utils.js?v=<?php echo $utilsVersion; ?>"></script>
-    <script src="/assets/js/main.js?v=<?php echo $jsVersion; ?>"></script>
+    <script src="<?php echo asset('assets/js/utils.js'); ?>"></script>
+    <script src="<?php echo asset('assets/js/main.js'); ?>"></script>
 </body>
 </html>

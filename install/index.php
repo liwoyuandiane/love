@@ -5,6 +5,7 @@
 
 // .env 路径统一解析（Docker 数据目录优先，见 env.php）：安装成功后配置会持久化到宿主机 love/ 目录
 require_once __DIR__ . '/../env.php';
+require_once __DIR__ . '/../includes/assets.php';
 $envFile = resolveEnvFile();
 if (file_exists($envFile)) {
     header('Location: /');
@@ -241,8 +242,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>安装向导 - 情侣纪念网站</title>
-    <link rel="stylesheet" href="/assets/css/fonts.css">
-    <link rel="stylesheet" href="/assets/css/fontawesome.css">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/fonts.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset('assets/css/fontawesome.css'); ?>">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {

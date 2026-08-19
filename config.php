@@ -60,5 +60,8 @@ date_default_timezone_set('Asia/Shanghai');
 // 版本号
 define('APP_VERSION', '3.2.0');
 
+// 静态资源版本号统一入口
+require_once __DIR__ . '/includes/assets.php';
+
 // 加载日志类
 require_once __DIR__ . '/includes/logger.php';
