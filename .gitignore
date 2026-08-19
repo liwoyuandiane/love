@@ -5,6 +5,7 @@
 
 # Logs
 logs/*.log
+!logs/.gitkeep
 
 # Uploads
 assets/uploads/*
@@ -13,6 +14,10 @@ assets/uploads/*
 # Cache
 cache/*
 !cache/.gitkeep
+
+# Docker data directories (bind mount, stored in project dir)
+uploads/
+sessions/
 
 # HAR files
 *.har

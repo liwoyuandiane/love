@@ -75,104 +75,77 @@
 
 ### 1. Docker 部署（推荐）
 
-#### ① 准备 `.env` 环境变量
+> 💡 **所有数据统一存放在 `love/` 目录下**：照片、缓存、日志、登录会话都在这里，方便查找、备份、迁移，不会散落在 Docker 卷里。
 
-在项目根目录创建 `.env` 文件（`cp .env.example .env`），填入数据库连接信息：
-
-```ini
-DB_HOST=你的数据库主机
-DB_PORT=3306
-DB_NAME=数据库名
-DB_USER=数据库用户
-DB_PASS=数据库密码
-```
-
-> `.env` 会被容器只读挂载，且已被 `.dockerignore` 排除，**不会打入镜像**。
-
-#### ② 一键启动（源码方式）
-
-```bash
-docker compose up -d --build
-```
-
-访问 `http://127.0.0.1:8000`。数据（图片、缓存、日志、会话）通过命名卷持久化，`docker compose down` 不会丢失。
-
-常用命令：
-
-```bash
-docker compose ps          # 查看状态
-docker compose logs -f     # 查看日志
-docker compose down        # 停止
-docker compose up -d       # 更新代码后重建
-```
-
-#### ③ 使用官方镜像（免构建，推荐）
-
-官方镜像已通过 GitHub Actions 自动构建并推送至 **GHCR（GitHub Container Registry）**：
-
-```
-ghcr.io/liwoyuandiane/love:latest   （linux/amd64 + linux/arm64 双架构）
-```
-
-**方式 A：推荐 —— 建目录 + `.env` 文件管理配置（好维护）**
+#### ① 创建目录并准备 `.env` ⭐（第一步必做）
 
 ```bash
 # 1. 建一个专属目录并进入（之后所有命令都在这里执行）
 mkdir -p love && cd love
 
-# 2. 创建 .env 配置文件，填入你的数据库信息
-cat > .env <<'EOF'
-DB_HOST=your-db-host
-DB_PORT=3306
-DB_NAME=love
-DB_USER=love_user
-DB_PASS=your_password
-EOF
+# 2. 创建数据子目录（照片/缓存/日志/会话）
+mkdir -p uploads cache logs sessions
 
-# 3. 拉取并运行（.env 只读挂载，改配置只需改 .env 后重启容器）
+# 3. 创建 .env 配置文件，填入你的数据库信息
+cat > .env <<'EOF'
+DB_HOST=你的数据库主机
+DB_PORT=3306
+DB_NAME=数据库名
+DB_USER=数据库用户
+DB_PASS=数据库密码
+EOF
+```
+
+**此时 `love/` 目录结构：**
+
+```
+love/
+├── .env              # 数据库配置（唯一需要手动填写的文件）
+├── uploads/          # 上传的照片
+├── cache/            # 前台数据缓存
+├── logs/             # 应用/错误/审计日志
+└── sessions/         # 登录会话（容器重建后登录态不丢）
+```
+
+> `.env` 会被容器只读挂载，且已被 `.dockerignore` 排除，**不会打入镜像**。
+
+#### ② 方法一：源码方式（docker compose）
+
+```bash
+cd love
+docker compose up -d --build
+```
+
+#### ③ 方法二：官方镜像（免构建，推荐）
+
+官方镜像已自动构建并推送至 **GHCR**：`ghcr.io/liwoyuandiane/love:latest`（amd64 + arm64 双架构，仅 43MB）。
+
+```bash
+cd love
 docker pull ghcr.io/liwoyuandiane/love:latest
 
 docker run -d --name love \
   -p 8000:80 \
   -v "$PWD/.env":/var/www/html/.env:ro \
-  -v love_uploads:/var/www/html/assets/uploads \
-  -v love_cache:/var/www/html/cache \
-  -v love_logs:/var/www/html/logs \
-  -v love_sessions:/var/lib/php/sessions \
+  -v "$PWD/uploads":/var/www/html/assets/uploads \
+  -v "$PWD/cache":/var/www/html/cache \
+  -v "$PWD/logs":/var/www/html/logs \
+  -v "$PWD/sessions":/var/lib/php/sessions \
   ghcr.io/liwoyuandiane/love:latest
 ```
 
-**方式 B：不建目录，直接环境变量（快速试用）**
+**数据都在 `love/` 下**，找日志 → `love/logs/`，找照片 → `love/uploads/`，备份直接打包整个 `love/` 目录即可。
+
+常用命令：
 
 ```bash
-docker pull ghcr.io/liwoyuandiane/love:latest
-
-docker run -d --name love \
-  -p 8000:80 \
-  -e DB_HOST=your-db-host \
-  -e DB_PORT=3306 \
-  -e DB_NAME=love \
-  -e DB_USER=love_user \
-  -e DB_PASS=your_password \
-  -v love_uploads:/var/www/html/assets/uploads \
-  -v love_cache:/var/www/html/cache \
-  -v love_logs:/var/www/html/logs \
-  -v love_sessions:/var/lib/php/sessions \
-  ghcr.io/liwoyuandiane/love:latest
+docker ps                 # 查看容器状态
+docker logs -f love       # 查看容器日志
+docker restart love       # 重启
+docker stop love && docker rm love   # 删除容器（数据保留在 love/ 目录）
 ```
 
-**为什么推荐方式 A？** 配置集中在 `.env` 文件里，换数据库、换机器时不用改启动命令；容器重建（升级镜像）后配置不丢。
-
-**⚠️ 四个持久卷（强烈建议都挂载）：**
-
-| 卷名 | 挂载点 | 用途 |
-|------|--------|------|
-| `love_uploads` | `/var/www/html/assets/uploads` | 上传的照片 |
-| `love_cache` | `/var/www/html/cache` | 前台数据缓存 |
-| `love_logs` | `/var/www/html/logs` | 应用/错误/审计日志 |
-| `love_sessions` | `/var/lib/php/sessions` | **登录会话**（容器重建后登录态不丢，CSRF 不失效） |
-
-> `love_sessions` 卷尤其重要：PHP session 持久化在 `/var/lib/php/sessions`，没有它时容器重建会丢失登录态，导致后台操作报「CSRF 验证失败」。详见[常见问题](#q-后台操作提示csrf验证失败请刷新页面后重试)。
+> 💡 升级镜像：`docker rm -f love && docker run ...`（重新执行上面的 run 命令即可），数据不丢。
 
 #### ④ 初始化数据库
 
@@ -301,7 +274,7 @@ server {
 ├── nginx.conf             # Nginx 伪静态（1Panel/传统部署）
 ├── docker-nginx.conf      # Docker 容器内 Nginx 配置
 ├── Dockerfile             # 多阶段构建（约 43MB）
-├── docker-compose.yml     # Compose 编排
+├── docker-compose.yml     # Compose 编排（数据存 ./uploads ./cache ./logs ./sessions）
 ├── docker-entrypoint.sh   # 容器启动脚本
 ├── .dockerignore          # Docker 构建排除
 ├── .github/workflows/     # GitHub Actions 自动构建
@@ -379,7 +352,7 @@ server {
 | SSRF | 域名全量 DNS 解析校验 + 拒绝内网/保留地址 + IPv6 防护（照片/音乐 URL） |
 | 敏感文件 | `.env`/`.git`/隐藏文件/Dockerfile 等禁止访问（Apache + Nginx 双重） |
 | 上传安全 | MIME + 魔数双重校验，uploads 目录禁止执行任何脚本 |
-| 会话安全 | HttpOnly、Secure（HTTPS 下）、SameSite=Strict、定期过期、**持久化卷** |
+| 会话安全 | HttpOnly、Secure（HTTPS 下）、SameSite=Strict、定期过期、**持久化** |
 | 安全头 | HSTS、CSP、X-Content-Type-Options、X-Frame-Options、Referrer-Policy |
 | 审计日志 | 登录/登出/增删改/导入导出等关键操作全部留痕 |
 
@@ -389,23 +362,23 @@ server {
 
 ### Q: 后台操作提示"CSRF 验证失败，请刷新页面后重试"
 A: 通常是 **容器重建导致 PHP 会话丢失**（session 未持久化）造成的：
-1. 确认 `docker run` 时挂载了 `-v love_sessions:/var/lib/php/sessions`（或 compose 中 `web_sessions` 卷）
+1. 确认 `docker run` 时挂载了 `-v "$PWD/sessions":/var/lib/php/sessions`（或 compose 中 `./sessions` 目录）
 2. 刷新页面（会重新生成与当前会话匹配的 CSRF Token）
 3. 若仍失败，重启容器：`docker restart love` 后重新登录
 
-> 新版镜像已内置 session 持久化配置（`session.save_path=/var/lib/php/sessions`），只要挂载了对应卷，容器重建后登录态与 CSRF 均不受影响。
+> 新版镜像已内置 session 持久化配置（`session.save_path=/var/lib/php/sessions`），只要挂载了 `love/sessions` 目录，容器重建后登录态与 CSRF 均不受影响。
 
 ### Q: 安装页面提示"could not find driver"
 A: PHP 缺少 `pdo_mysql` 扩展。1Panel 中到 PHP 应用 → 设置 → 扩展 → 安装 `pdo`、`pdo_mysql`。Docker 部署已内置，无需处理。
 
 ### Q: Docker 部署后连不上数据库
-A: 检查：① `.env` 数据库信息是否正确；② 数据库是否允许容器所在 IP 远程连接；③ `docker compose logs -f` 查看错误日志。
+A: 检查：① `.env` 数据库信息是否正确；② 数据库是否允许容器所在 IP 远程连接；③ `docker logs -f love` 查看错误日志。
 
 ### Q: 前台/后台显示 404
 A: 路由未配置。Nginx 需 `try_files $uri $uri/ /router.php?$query_string;`，Apache 需开启 AllowOverride。Docker 已内置。
 
 ### Q: 图片无法上传
-A: 检查 uploads 目录写权限、PHP `upload_max_filesize`、Nginx `client_max_body_size`。Docker 已内置 20M 限制与持久卷。
+A: 检查 `love/uploads` 目录写权限、PHP `upload_max_filesize`、Nginx `client_max_body_size`。Docker 已内置 20M 限制。
 
 ### Q: 音乐无法播放
 A: 检查音乐 URL 可访问性、浏览器是否拦截自动播放、控制台错误。主 URL 失效会自动切换备用 URL。
@@ -417,7 +390,8 @@ A: 检查音乐 URL 可访问性、浏览器是否拦截自动播放、控制台
 ### v3.1.0（安全加固 + Docker 优化）
 - 🐛 修复登录锁定因时区偏差完全失效的严重缺陷
 - 🐛 修复前台计时器 visibilitychange 监听器累积泄漏
-- 🔐 **登录会话持久化**：session 存储移至 `/var/lib/php/sessions` 持久卷，容器重建后登录态不丢、CSRF 不失效
+- 🔐 **登录会话持久化**：session 存储移至 `love/sessions` 目录，容器重建后登录态不丢、CSRF 不失效
+- 🐳 **数据统一目录**：uploads/cache/logs/sessions 全部存放在 `love/` 项目目录下（bind mount），不再使用分散的 Docker 命名卷
 - 🛡️ 新增共享 SSRF 防护（全量 DNS 校验、IPv6、拒绝凭据 URL）
 - 🛡️ 音乐 URL 接入 SSRF 校验
 - 🛡️ 密码强制 72 字节上限（对齐 bcrypt）
