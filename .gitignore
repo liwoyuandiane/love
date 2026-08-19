@@ -19,6 +19,9 @@ cache/*
 uploads/
 sessions/
 
+# Local agent guide (NOT uploaded to GitHub)
+CLAUDE.md
+
 # HAR files
 *.har
 

@@ -16,8 +16,7 @@
 - [技术栈](#-技术栈)
 - [快速开始](#-快速开始)
   - [Docker 部署（推荐）](#1-docker-部署推荐)
-  - [1Panel 部署](#2-1panel-部署)
-  - [传统部署（Nginx/Apache）](#3-传统部署)
+
 - [使用说明](#-使用说明)
 - [项目结构](#-项目结构)
 - [API 接口](#-api-接口)
@@ -32,7 +31,7 @@
 ## ✨ 功能特性
 
 ### 前台展示
-- 🌹 浪漫温馨的响应式界面，**白天 / 黑夜自动切换**（支持手动模式）
+- 🌹 浪漫温馨的响应式界面，**白天 / 黑夜一键切换**（默认白天，右上角开关）
 - 🌸 花瓣飘落动画 + 柔光特效
 - ⏱️ 纪念日计时器（精确到秒，页面不可见时自动暂停节省资源）
 - 🏆 **里程碑徽章**（100 天、200 天、1-10 周年自动展示）
@@ -65,7 +64,7 @@
 |----|------|
 | 后端 | PHP 8.0+（推荐 8.2），原生无框架 |
 | 数据库 | MySQL 5.7+ / 8.0+，PDO 预处理语句 |
-| Web | Nginx（Docker）/ Apache / 1Panel |
+| Web | Nginx（Docker 容器内） |
 | 前端 | 原生 HTML/CSS/JS，Font Awesome 图标 |
 | 部署 | Docker / Docker Compose / GitHub Actions |
 
@@ -77,86 +76,66 @@
 
 > 💡 **所有数据统一存放在 `love/` 目录下**：照片、缓存、日志、登录会话都在这里，方便查找、备份、迁移，不会散落在 Docker 卷里。
 
-#### ① 创建目录并准备 `.env` ⭐（第一步必做）
+#### ① 创建目录并启动 ⭐（只需两步）
 
 ```bash
-# 1. 建一个专属目录并进入（之后所有命令都在这里执行）
 mkdir -p love && cd love
-
-# 2. 创建数据子目录（照片/缓存/日志/会话）
-mkdir -p uploads cache logs sessions
-
-# 3. 创建 .env 配置文件，填入你的数据库信息
-cat > .env <<'EOF'
-DB_HOST=你的数据库主机
-DB_PORT=3306
-DB_NAME=数据库名
-DB_USER=数据库用户
-DB_PASS=数据库密码
-EOF
+docker run -d --name love -p 8000:80 -v "$PWD":/data ghcr.io/liwoyuandiane/love:latest
 ```
 
-**此时 `love/` 目录结构：**
+**启动后容器自动完成以下操作（无需手动创建任何文件/目录）：**
+
+| 自动行为 | 说明 |
+|---------|------|
+| 检测 `.env` | `love/` 下有 `.env` → 直接使用该数据库配置；**没有** → 浏览器访问自动进入安装向导 |
+| 创建数据子目录 | `uploads/` `cache/` `logs/` `sessions/` 自动生成，无需手动 `mkdir` |
+| 映射数据目录 | 照片/缓存/日志/会话自动落到 `love/` 对应目录，容器重建数据不丢 |
+
+**首次安装（`love/` 下无 `.env` 时）：**
+
+1. 浏览器访问 `http://127.0.0.1:8000/`（自动跳转到 `/install/` 安装向导）
+2. 填写数据库信息 + 管理员账号（**密码 8-72 位，需包含字母和数字**）
+3. 点击「测试连接」→「开始安装」
+4. 安装完成后自动进入前台，访问 `http://127.0.0.1:8000/admin.php` 登录后台
+
+安装成功后 `love/` 目录结构（**`.env` 由安装向导自动生成并写入该目录**）：
 
 ```
 love/
-├── .env              # 数据库配置（唯一需要手动填写的文件）
+├── .env              # 数据库配置（安装向导自动生成，容器重建后仍会读取）
 ├── uploads/          # 上传的照片
 ├── cache/            # 前台数据缓存
 ├── logs/             # 应用/错误/审计日志
 └── sessions/         # 登录会话（容器重建后登录态不丢）
 ```
 
-> `.env` 会被容器只读挂载，且已被 `.dockerignore` 排除，**不会打入镜像**。
+> `.env` 已被 `.dockerignore` 排除，**不会打入镜像**。手动修改 `love/.env` 后执行 `docker restart love` 生效。
 
-#### ② 方法一：源码方式（docker compose）
+#### ② 本地构建（可选）
+
+> 不想直接使用官方镜像、需要修改/调试源码时，将本仓库代码与 `docker-compose.yml` 一起放到你的工作目录（如 `love/`），然后：
 
 ```bash
 cd love
 docker compose up -d --build
 ```
 
-#### ③ 方法二：官方镜像（免构建，推荐）
+> compose 同样采用一键数据目录（`./:/data`），`.env` 检测与目录自动创建行为与上方 `docker run` 完全一致。
 
-官方镜像已自动构建并推送至 **GHCR**：`ghcr.io/liwoyuandiane/love:latest`（amd64 + arm64 双架构，仅 43MB）。
-
-```bash
-cd love
-docker pull ghcr.io/liwoyuandiane/love:latest
-
-docker run -d --name love \
-  -p 8000:80 \
-  -v "$PWD/.env":/var/www/html/.env:ro \
-  -v "$PWD/uploads":/var/www/html/assets/uploads \
-  -v "$PWD/cache":/var/www/html/cache \
-  -v "$PWD/logs":/var/www/html/logs \
-  -v "$PWD/sessions":/var/lib/php/sessions \
-  ghcr.io/liwoyuandiane/love:latest
-```
+#### ③ 常用命令与升级
 
 **数据都在 `love/` 下**，找日志 → `love/logs/`，找照片 → `love/uploads/`，备份直接打包整个 `love/` 目录即可。
 
-常用命令：
-
 ```bash
 docker ps                 # 查看容器状态
-docker logs -f love       # 查看容器日志
+docker logs -f love       # 查看容器日志（会显示 .env 检测结果）
 docker restart love       # 重启
 docker stop love && docker rm love   # 删除容器（数据保留在 love/ 目录）
 ```
 
-> 💡 升级镜像：`docker rm -f love && docker run ...`（重新执行上面的 run 命令即可），数据不丢。
+> 💡 升级镜像：`docker rm -f love && docker run ...`（重新执行 ① 的 run 命令即可），数据不丢。
 
-#### ④ 初始化数据库
-
-1. 访问 `http://127.0.0.1:8000/install/`
-2. 填写数据库信息 + 管理员账号（**密码 8-72 位，需包含字母和数字**）
-3. 点击「测试连接」→「开始安装」
-4. 安装完成后访问 `http://127.0.0.1:8000/admin` 登录后台
-
-> ⚠️ 若数据库已存在数据，安装会**清空该数据库**，请谨慎操作。
-
-#### ⑤ GitHub Actions 自动构建
+#### ④ GitHub Actions 自动构建
 
 仓库内置 `.github/workflows/docker-build.yml`，自动构建 **amd64 + arm64** 双架构镜像并推送至 `ghcr.io/liwoyuandiane/love`：
 
@@ -168,71 +147,6 @@ docker stop love && docker rm love   # 删除容器（数据保留在 love/ 目�
 
 ---
 
-### 2. 1Panel 部署
-
-#### ① 上传代码
-将项目代码上传至 1Panel 网站目录。
-
-#### ② 配置伪静态
-在网站 **设置 → 伪静态 → 自定义** 中添加：
-
-```nginx
-location / {
-    try_files $uri $uri/ /router.php?$query_string;
-}
-
-location ~ \.php$ {
-    try_files $uri =404;
-    fastcgi_pass unix:/tmp/php-cgi.sock;
-    fastcgi_index index.php;
-    include fastcgi_params;
-    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-}
-```
-
-或直接引入项目自带的 `nginx.conf`：
-
-```nginx
-include /你的网站目录/nginx.conf;
-```
-
-#### ③ 确认 PHP 版本
-网站 PHP 版本需为 8.x（推荐 8.2 或 8.5）。若报 502，请按实际环境修改 `fastcgi_pass` 的 socket 路径（如 `/tmp/php-cgi-82.sock`）。
-
-#### ④ 访问安装向导
-浏览器访问 `http://你的域名/install/`，按向导完成安装。
-
----
-
-### 3. 传统部署
-
-**Nginx 配置示例：**
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    root /var/www/love-couple;
-    index index.php router.php;
-
-    location / {
-        try_files $uri $uri/ /router.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.0-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        include fastcgi_params;
-    }
-
-    location ~ /\.ht { deny all; }
-    location ~ /\.env { deny all; }
-}
-```
-
-**Apache**：项目已自带 `.htaccess`（含路由重写、敏感文件保护、目录禁用索引），确保开启 `AllowOverride All` 即可。
-
----
 
 ## 📖 使用说明
 
@@ -255,8 +169,8 @@ server {
 | 审计日志 | 查看关键操作记录 |
 
 ### 主题切换
-- **自动模式**：根据系统偏好自动切换深浅色
-- **手动模式**：点击右上角太阳/月亮/调节图标循环切换
+- **默认白天模式**，右上角横向开关：白天 = 左球太阳 ☀，点击滑到右侧 = 黑夜 = 月亮 🌙
+- 选择保存在浏览器本地（`localStorage`），下次访问自动应用
 
 ---
 
@@ -271,10 +185,10 @@ server {
 ├── .env                   # 环境变量（安装后生成，禁止提交）
 ├── .env.example           # 环境变量示例
 ├── .htaccess              # Apache 配置（路由 + 安全）
-├── nginx.conf             # Nginx 伪静态（1Panel/传统部署）
+├── nginx.conf             # Nginx 伪静态片段（非 Docker 部署参考，容器内用 docker-nginx.conf）
 ├── docker-nginx.conf      # Docker 容器内 Nginx 配置
 ├── Dockerfile             # 多阶段构建（约 43MB）
-├── docker-compose.yml     # Compose 编排（数据存 ./uploads ./cache ./logs ./sessions）
+├── docker-compose.yml     # Compose 编排（一键数据目录 ./ → /data）
 ├── docker-entrypoint.sh   # 容器启动脚本
 ├── .dockerignore          # Docker 构建排除
 ├── .github/workflows/     # GitHub Actions 自动构建
@@ -362,14 +276,14 @@ server {
 
 ### Q: 后台操作提示"CSRF 验证失败，请刷新页面后重试"
 A: 通常是 **容器重建导致 PHP 会话丢失**（session 未持久化）造成的：
-1. 确认 `docker run` 时挂载了 `-v "$PWD/sessions":/var/lib/php/sessions`（或 compose 中 `./sessions` 目录）
+1. 确认 `docker run` 时挂载了整个数据目录 `-v "$PWD":/data`（session 目录会自动映射）
 2. 刷新页面（会重新生成与当前会话匹配的 CSRF Token）
 3. 若仍失败，重启容器：`docker restart love` 后重新登录
 
 > 新版镜像已内置 session 持久化配置（`session.save_path=/var/lib/php/sessions`），只要挂载了 `love/sessions` 目录，容器重建后登录态与 CSRF 均不受影响。
 
 ### Q: 安装页面提示"could not find driver"
-A: PHP 缺少 `pdo_mysql` 扩展。1Panel 中到 PHP 应用 → 设置 → 扩展 → 安装 `pdo`、`pdo_mysql`。Docker 部署已内置，无需处理。
+A: PHP 缺少 `pdo_mysql` 扩展。Docker 部署已内置，无需处理；非 Docker 部署需在 PHP 中启用 `pdo`、`pdo_mysql` 扩展。
 
 ### Q: Docker 部署后连不上数据库
 A: 检查：① `.env` 数据库信息是否正确；② 数据库是否允许容器所在 IP 远程连接；③ `docker logs -f love` 查看错误日志。
@@ -386,6 +300,16 @@ A: 检查音乐 URL 可访问性、浏览器是否拦截自动播放、控制台
 ---
 
 ## 📝 更新日志
+
+### v3.2.0（一键启动：自动 .env 检测 + 数据目录自动创建）
+- 🐳 **一键启动**：`mkdir -p love && cd love && docker run ... -v "$PWD":/data` 即可，无需手动创建任何文件
+- 🐳 **自动检测 .env**：`love/` 下有 `.env` → 直接使用；没有 → 自动进入安装向导，`.env` 由向导生成并写入 `love/` 目录（容器重建配置不丢）
+- 🐳 **自动创建子目录**：`uploads/cache/logs/sessions` 容器启动时自动生成（entrypoint 内 mkdir + 权限修正）
+- 🐳 **数据目录映射**：容器内路径 symlink 到 `/data` 数据目录，备份/迁移直接打包 `love/` 即可
+- 🐳 移除旧挂载兼容：升级部署请直接用新命令（旧 `.env:ro` 多挂载方式不再支持）
+- 🛡️ health API：未安装时返回 200 健康状态（容器 HEALTHCHECK 不再异常）
+- 🐛 修复安装向导在 Docker 下无法把 `.env` 写入数据目录的权限问题
+- 📄 新增 `env.php` 统一解析 `.env` 路径（Docker 数据目录优先，传统部署自动回退）
 
 ### v3.1.0（安全加固 + Docker 优化）
 - 🐛 修复登录锁定因时区偏差完全失效的严重缺陷
