@@ -45,6 +45,11 @@ RUN rm -f /etc/nginx/conf.d/default.conf
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# 会话存储：持久卷挂载到 /var/lib/php/sessions，容器重建后登录态不丢失
+RUN mkdir -p /var/lib/php/sessions \
+    && chown -R www-data:www-data /var/lib/php/sessions \
+    && printf 'session.save_path = "/var/lib/php/sessions"\nsession.gc_maxlifetime = 86400\n' > /usr/local/etc/php/conf.d/session-persist.ini
+
 # 拷贝应用代码
 COPY . /var/www/html/
 

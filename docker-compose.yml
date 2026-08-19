@@ -9,6 +9,7 @@ services:
       - web_uploads:/var/www/html/assets/uploads
       - web_cache:/var/www/html/cache
       - web_logs:/var/www/html/logs
+      - web_sessions:/var/lib/php/sessions
       - ./.env:/var/www/html/.env:ro
     environment:
       # 从 .env 读取数据库连接（.env 已被 .gitignore 排除，不会进 git）
@@ -23,3 +24,4 @@ volumes:
   web_uploads:
   web_cache:
   web_logs:
+  web_sessions:

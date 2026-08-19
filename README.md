@@ -54,6 +54,7 @@
 - 🐳 **官方 Docker 镜像**：多架构（`linux/amd64` + `linux/arm64`），镜像仅 **43MB**
 - ⚡ **GitHub Actions 自动构建**：推 main 打 latest，打 `v*` 标签打版本
 - 🚀 前台缓存秒开 + 后台增量刷新
+- 🔐 **登录会话持久化**：容器重建后登录态不丢失（CSRF 不失效）
 - 🛡️ 全链路安全防护（见 [安全设计](#-安全设计)）
 
 ---
@@ -88,13 +89,13 @@ DB_PASS=数据库密码
 
 > `.env` 会被容器只读挂载，且已被 `.dockerignore` 排除，**不会打入镜像**。
 
-#### ② 一键启动
+#### ② 一键启动（源码方式）
 
 ```bash
 docker compose up -d --build
 ```
 
-访问 `http://127.0.0.1:8000`。数据（图片、缓存、日志）通过命名卷持久化，`docker compose down` 不会丢失。
+访问 `http://127.0.0.1:8000`。数据（图片、缓存、日志、会话）通过命名卷持久化，`docker compose down` 不会丢失。
 
 常用命令：
 
@@ -105,10 +106,46 @@ docker compose down        # 停止
 docker compose up -d       # 更新代码后重建
 ```
 
-#### ③ 使用官方镜像（免构建）
+#### ③ 使用官方镜像（免构建，推荐）
+
+官方镜像已通过 GitHub Actions 自动构建并推送至 **GHCR（GitHub Container Registry）**：
+
+```
+ghcr.io/liwoyuandiane/love:latest   （linux/amd64 + linux/arm64 双架构）
+```
+
+**方式 A：推荐 —— 建目录 + `.env` 文件管理配置（好维护）**
 
 ```bash
-docker pull ghcr.io/<你的GitHub用户名>/love:latest
+# 1. 建一个专属目录并进入（之后所有命令都在这里执行）
+mkdir -p love && cd love
+
+# 2. 创建 .env 配置文件，填入你的数据库信息
+cat > .env <<'EOF'
+DB_HOST=your-db-host
+DB_PORT=3306
+DB_NAME=love
+DB_USER=love_user
+DB_PASS=your_password
+EOF
+
+# 3. 拉取并运行（.env 只读挂载，改配置只需改 .env 后重启容器）
+docker pull ghcr.io/liwoyuandiane/love:latest
+
+docker run -d --name love \
+  -p 8000:80 \
+  -v "$PWD/.env":/var/www/html/.env:ro \
+  -v love_uploads:/var/www/html/assets/uploads \
+  -v love_cache:/var/www/html/cache \
+  -v love_logs:/var/www/html/logs \
+  -v love_sessions:/var/lib/php/sessions \
+  ghcr.io/liwoyuandiane/love:latest
+```
+
+**方式 B：不建目录，直接环境变量（快速试用）**
+
+```bash
+docker pull ghcr.io/liwoyuandiane/love:latest
 
 docker run -d --name love \
   -p 8000:80 \
@@ -120,8 +157,22 @@ docker run -d --name love \
   -v love_uploads:/var/www/html/assets/uploads \
   -v love_cache:/var/www/html/cache \
   -v love_logs:/var/www/html/logs \
-  ghcr.io/<你的GitHub用户名>/love:latest
+  -v love_sessions:/var/lib/php/sessions \
+  ghcr.io/liwoyuandiane/love:latest
 ```
+
+**为什么推荐方式 A？** 配置集中在 `.env` 文件里，换数据库、换机器时不用改启动命令；容器重建（升级镜像）后配置不丢。
+
+**⚠️ 四个持久卷（强烈建议都挂载）：**
+
+| 卷名 | 挂载点 | 用途 |
+|------|--------|------|
+| `love_uploads` | `/var/www/html/assets/uploads` | 上传的照片 |
+| `love_cache` | `/var/www/html/cache` | 前台数据缓存 |
+| `love_logs` | `/var/www/html/logs` | 应用/错误/审计日志 |
+| `love_sessions` | `/var/lib/php/sessions` | **登录会话**（容器重建后登录态不丢，CSRF 不失效） |
+
+> `love_sessions` 卷尤其重要：PHP session 持久化在 `/var/lib/php/sessions`，没有它时容器重建会丢失登录态，导致后台操作报「CSRF 验证失败」。详见[常见问题](#q-后台操作提示csrf验证失败请刷新页面后重试)。
 
 #### ④ 初始化数据库
 
@@ -134,7 +185,7 @@ docker run -d --name love \
 
 #### ⑤ GitHub Actions 自动构建
 
-仓库内置 `.github/workflows/docker-build.yml`，自动构建 **amd64 + arm64** 双架构镜像并推送至 `ghcr.io`：
+仓库内置 `.github/workflows/docker-build.yml`，自动构建 **amd64 + arm64** 双架构镜像并推送至 `ghcr.io/liwoyuandiane/love`：
 
 | 触发方式 | 生成的标签 |
 |---------|-----------|
@@ -328,13 +379,21 @@ server {
 | SSRF | 域名全量 DNS 解析校验 + 拒绝内网/保留地址 + IPv6 防护（照片/音乐 URL） |
 | 敏感文件 | `.env`/`.git`/隐藏文件/Dockerfile 等禁止访问（Apache + Nginx 双重） |
 | 上传安全 | MIME + 魔数双重校验，uploads 目录禁止执行任何脚本 |
-| 会话安全 | HttpOnly、Secure（HTTPS 下）、SameSite=Strict、定期过期 |
+| 会话安全 | HttpOnly、Secure（HTTPS 下）、SameSite=Strict、定期过期、**持久化卷** |
 | 安全头 | HSTS、CSP、X-Content-Type-Options、X-Frame-Options、Referrer-Policy |
 | 审计日志 | 登录/登出/增删改/导入导出等关键操作全部留痕 |
 
 ---
 
 ## ❓ 常见问题
+
+### Q: 后台操作提示"CSRF 验证失败，请刷新页面后重试"
+A: 通常是 **容器重建导致 PHP 会话丢失**（session 未持久化）造成的：
+1. 确认 `docker run` 时挂载了 `-v love_sessions:/var/lib/php/sessions`（或 compose 中 `web_sessions` 卷）
+2. 刷新页面（会重新生成与当前会话匹配的 CSRF Token）
+3. 若仍失败，重启容器：`docker restart love` 后重新登录
+
+> 新版镜像已内置 session 持久化配置（`session.save_path=/var/lib/php/sessions`），只要挂载了对应卷，容器重建后登录态与 CSRF 均不受影响。
 
 ### Q: 安装页面提示"could not find driver"
 A: PHP 缺少 `pdo_mysql` 扩展。1Panel 中到 PHP 应用 → 设置 → 扩展 → 安装 `pdo`、`pdo_mysql`。Docker 部署已内置，无需处理。
@@ -358,6 +417,7 @@ A: 检查音乐 URL 可访问性、浏览器是否拦截自动播放、控制台
 ### v3.1.0（安全加固 + Docker 优化）
 - 🐛 修复登录锁定因时区偏差完全失效的严重缺陷
 - 🐛 修复前台计时器 visibilitychange 监听器累积泄漏
+- 🔐 **登录会话持久化**：session 存储移至 `/var/lib/php/sessions` 持久卷，容器重建后登录态不丢、CSRF 不失效
 - 🛡️ 新增共享 SSRF 防护（全量 DNS 校验、IPv6、拒绝凭据 URL）
 - 🛡️ 音乐 URL 接入 SSRF 校验
 - 🛡️ 密码强制 72 字节上限（对齐 bcrypt）
