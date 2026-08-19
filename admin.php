@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <title>后台管理 - 情侣网站</title>
     <link rel="stylesheet" href="/assets/css/fonts.css">
     <link rel="stylesheet" href="/assets/css/fontawesome.css">
-    <link rel="stylesheet" href="/assets/css/admin.css">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=<?php echo filemtime(__DIR__ . '/assets/css/admin.css') ?: APP_VERSION; ?>">
 </head>
 <body>
     <div class="login-overlay" id="loginOverlay" <?php if ($success) echo 'style="display:none"'; ?>>
@@ -487,7 +487,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         window.CURRENT_USER_ID = <?php echo intval($currentUserId); ?>;
         window.IS_ADMIN = <?php echo ($currentUserRole ?? 'user') === 'admin' ? 'true' : 'false'; ?>;
     </script>
-    <script src="/assets/js/utils.js"></script>
-    <script src="/assets/js/admin.js"></script>
+    <script src="/assets/js/utils.js?v=<?php echo filemtime(__DIR__ . '/assets/js/utils.js') ?: APP_VERSION; ?>"></script>
+    <script src="/assets/js/admin.js?v=<?php echo filemtime(__DIR__ . '/assets/js/admin.js') ?: APP_VERSION; ?>"></script>
 </body>
 </html>
