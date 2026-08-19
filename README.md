@@ -14,6 +14,7 @@
 - 数据导入/导出（JSON 格式）
 - 完整的后台管理
 - 安全防护（CSRF、SQL 注入防护、登录锁定）
+- 官方 Docker 镜像（多架构：linux/amd64 + linux/arm64，约 43MB）
 
 ## 环境要求
 
@@ -32,7 +33,14 @@
 ├── config.php             # 配置文件引入
 ├── .env                   # 环境变量（安装后生成）
 ├── .htaccess              # Apache 配置（自动加载）
-├── nginx.conf             # Nginx 配置（手动加载）
+├── nginx.conf             # Nginx 配置（1Panel/传统部署用）
+├── docker-nginx.conf      # Docker 容器内 Nginx 配置
+├── Dockerfile             # 多阶段构建（Nginx + PHP-FPM Alpine，约 43MB）
+├── docker-compose.yml     # Docker Compose 编排
+├── docker-entrypoint.sh   # 容器启动脚本
+├── .dockerignore          # Docker 构建排除清单
+├── .github/workflows/     # GitHub Actions 自动构建镜像
+│   └── docker-build.yml
 ├── assets/
 │   ├── css/              # 样式文件
 │   ├── js/               # JavaScript 文件
@@ -64,7 +72,101 @@
 
 ## 安装
 
-### 方式一：1Panel 部署（推荐）
+### 方式一：Docker 部署（推荐）
+
+#### 1. 准备 `.env` 环境变量
+
+在 Docker 运行目录（项目根目录）创建 `.env` 文件，配置你的数据库连接：
+
+```bash
+# 进入项目目录
+cd /path/to/love
+
+# 创建 .env（如果不存在）
+cp .env.example .env
+
+# 编辑 .env，填入真实数据库信息
+vim .env
+```
+
+`.env` 内容格式：
+
+```ini
+DB_HOST=你的数据库主机
+DB_PORT=3306
+DB_NAME=数据库名
+DB_USER=数据库用户
+DB_PASS=数据库密码
+```
+
+> **注意**：`.env` 会被容器以只读方式挂载，且已被 `.dockerignore` 排除，不会打进镜像。
+
+#### 2. 一键启动
+
+```bash
+docker compose up -d --build
+```
+
+应用运行在 `http://127.0.0.1:8000`。数据（上传图片、缓存、日志）通过命名卷持久化，`docker compose down` 不会丢失。
+
+常用命令：
+
+```bash
+docker compose ps          # 查看状态
+docker compose logs -f     # 查看日志
+docker compose down        # 停止
+docker compose up -d       # 更新代码后重建（自动利用构建缓存，很快）
+```
+
+#### 3. 使用官方镜像（免构建）
+
+如果已推送到 GitHub 容器仓库，可直接拉取运行：
+
+```bash
+# 使用 ghcr.io 镜像（linux/amd64 + linux/arm64 多架构）
+docker run -d --name love \
+  -p 8000:80 \
+  -e DB_HOST=your-db-host \
+  -e DB_PORT=3306 \
+  -e DB_NAME=love \
+  -e DB_USER=love_user \
+  -e DB_PASS=your_password \
+  -v love_uploads:/var/www/html/assets/uploads \
+  -v love_cache:/var/www/html/cache \
+  -v love_logs:/var/www/html/logs \
+  ghcr.io/你的GitHub用户名/love:latest
+```
+
+> 更推荐在项目目录下直接用 `docker compose up -d`，`.env` 会自动被读取。
+
+#### 4. 初始化数据库
+
+1. 打开浏览器访问 `http://127.0.0.1:8000/install/`
+2. 填写数据库信息（与 `.env` 一致）和管理员账号
+3. 点击「开始安装」
+4. 安装完成后访问 `http://127.0.0.1:8000/admin` 登录后台
+
+> 如果数据库已初始化过（之前安装过），直接访问前台/后台即可。
+
+#### 5. GitHub Actions 自动构建
+
+仓库默认配置了 `.github/workflows/docker-build.yml`，满足以下任一条件自动构建**amd64 + arm64 双架构**镜像并推送到 `ghcr.io`：
+
+| 触发方式 | 说明 |
+|---------|------|
+| 推送 `main` 分支 | 构建 `latest` 标签 |
+| 推送 `v*` 标签（如 `v3.1.0`） | 构建版本标签 `3.1.0`、`3.1` |
+| 手动触发（Actions → Run workflow） | 可选 PHP 版本参数 |
+
+使用拉取：
+
+```bash
+docker pull ghcr.io/你的GitHub用户名/love:latest
+```
+
+---
+
+### 方式二：1Panel 部署
 
 #### 步骤 1：上传代码
 
@@ -124,7 +226,7 @@ include /你的网站目录/nginx.conf;
 
 ---
 
-### 方式二：传统部署
+### 方式三：传统部署
 
 #### 1. 配置 Web 服务器
 
@@ -232,6 +334,8 @@ location ~ /\.env {
 }
 ```
 
+Docker 部署已内置保护：容器会拒绝直接访问 `.env`、隐藏文件等敏感路径。
+
 ---
 
 ## 常见问题
@@ -243,6 +347,8 @@ A: PHP 未安装 `pdo_mysql` 扩展。在 1Panel 中：
 2. 安装 `pdo` 和 `pdo_mysql` 扩展
 3. 重启 PHP 服务
 
+Docker 部署已内置 `pdo_mysql`、`gd` 扩展，无需处理。
+
 ### Q: 安装页面提示"数据库连接失败"
 
 A: 请检查：
@@ -251,11 +357,19 @@ A: 请检查：
 3. 数据库是否允许远程连接
 4. 防火墙是否开放了数据库端口
 
+### Q: Docker 部署后应用连不上数据库
+
+A: 请检查：
+1. `.env` 或 docker-compose 的 `environment` 中的数据库信息是否正确
+2. 数据库是否允许来自 Docker 容器的远程连接
+3. 用 `docker compose logs -f` 查看容器错误日志
+
 ### Q: 安装完成后前台/后台显示 404
 
 A: Web 服务器未正确配置路由。需要配置伪静态规则让所有请求指向 `router.php`：
 - Nginx：使用上面提供的 `try_files $uri $uri/ /router.php?$query_string;`
 - Apache：项目已自带 `.htaccess`，确保 AllowOverride 开启
+- Docker：已内置相关配置，无需处理
 
 ### Q: 图片无法上传
 
@@ -263,6 +377,8 @@ A: 请检查：
 1. `assets/uploads` 目录是否有写入权限
 2. PHP 的 `upload_max_filesize` 配置
 3. Nginx 的 `client_max_body_size` 配置
+
+Docker 部署已内置 20M 上传限制与持久卷，无需额外配置。
 
 ### Q: 音乐无法播放
 

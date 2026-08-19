@@ -1,0 +1,25 @@
+services:
+  web:
+    build: .
+    image: ghcr.io/liwoyuandiane/love:latest
+    container_name: love_web
+    ports:
+      - "${WEB_PORT:-8000}:80"
+    volumes:
+      - web_uploads:/var/www/html/assets/uploads
+      - web_cache:/var/www/html/cache
+      - web_logs:/var/www/html/logs
+      - ./.env:/var/www/html/.env:ro
+    environment:
+      # 从 .env 读取数据库连接（.env 已被 .gitignore 排除，不会进 git）
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+    restart: always
+
+volumes:
+  web_uploads:
+  web_cache:
+  web_logs:

@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+logs/*.log
+cache/*.cache
+assets/uploads/*
+Dockerfile
+docker-compose.yml
+CLAUDE.md
+README.md
+temp_check.php
+*.php.bak
+*~
+.github
