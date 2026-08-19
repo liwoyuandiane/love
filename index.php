@@ -3,8 +3,9 @@
  * 前台首页
  */
 
-// 检测安装
-$envFile = __DIR__ . '/.env';
+// 检测安装（.env 路径统一解析：Docker 数据目录优先，见 env.php）
+require_once __DIR__ . '/env.php';
+$envFile = resolveEnvFile();
 if (!file_exists($envFile)) {
     header('Location: /install/');
     exit;
@@ -21,7 +22,7 @@ $jsVersion = filemtime(__DIR__ . '/assets/js/main.js') ?: APP_VERSION;
 $utilsVersion = filemtime(__DIR__ . '/assets/js/utils.js') ?: APP_VERSION;
 ?>
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -35,14 +36,26 @@ $utilsVersion = filemtime(__DIR__ . '/assets/js/utils.js') ?: APP_VERSION;
     <link rel="stylesheet" href="/assets/css/fonts.css">
     <link rel="stylesheet" href="/assets/css/fontawesome.css">
     <link rel="stylesheet" href="/assets/css/style.css?v=<?php echo $styleVersion; ?>">
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('theme') || 'light';
+                document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+            } catch (e) { /* 隐私模式等场景忽略 */ }
+        })();
+    </script>
 </head>
 <body>
     <script>
         window.CSRF_TOKEN = <?php echo json_encode(CSRF::generate()); ?>;
     </script>
     <a href="/admin.php" class="admin-link"><i class="fas fa-cog"></i> 管理</a>
-    <button class="theme-toggle" id="themeToggle" title="切换主题">
-        <i class="fas fa-moon"></i>
+    <button class="theme-toggle" id="themeToggle" type="button" role="switch" aria-checked="false" title="切换到黑夜模式">
+        <span class="theme-toggle-track">
+            <span class="theme-toggle-thumb">
+                <i class="fas fa-sun"></i>
+            </span>
+        </span>
     </button>
 
     <div class="stars-container" id="stars-container"></div>

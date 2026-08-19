@@ -38,7 +38,7 @@
         body {
             font-family: 'Quicksand', 'Noto Sans SC', sans-serif;
             min-height: 100vh;
-            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-mid) 50%, #2a1a3a 100%);
+            background: var(--bg-gradient);
             background-attachment: fixed;
             color: var(--text-primary);
             overflow-x: hidden;
@@ -146,34 +146,56 @@
         
         .admin-link i { font-size: 0.9rem; }
         
+        /* 主题切换：横向长条开关（白天=左球太阳 / 黑夜=右球月亮） */
         .theme-toggle {
             position: fixed;
             top: 20px;
             right: 120px;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
+            width: 64px;
+            height: 32px;
+            border-radius: 32px;
             background: rgba(255, 107, 157, 0.15);
             -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 107, 157, 0.3);
-            color: rgba(255, 255, 255, 0.9);
             cursor: pointer;
+            padding: 0;
+            z-index: 100;
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+        
+        .theme-toggle-track {
+            position: relative;
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .theme-toggle-thumb {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #ffffff, #ffe3ec);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            z-index: 100;
+            font-size: 0.8rem;
+            color: #f8b500;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
-        .theme-toggle:hover {
-            background: rgba(255, 107, 157, 0.3);
-            transform: scale(1.1);
+        [data-theme="dark"] .theme-toggle-thumb {
+            transform: translateX(32px);
+            background: linear-gradient(145deg, #4a4373, #2d2a4a);
+            color: #cdd0ff;
         }
         
-        [data-theme="light"] .theme-toggle {
-            color: #2d1f3d;
+        .theme-toggle:hover .theme-toggle-thumb {
+            box-shadow: 0 2px 12px rgba(255, 107, 157, 0.45);
         }
         
         /* Container */

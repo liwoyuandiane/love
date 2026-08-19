@@ -54,31 +54,29 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function initTheme() {
-        const saved = localStorage.getItem('theme') || 'auto';
+        // 默认白天模式（localStorage 无记录时），两态切换：白天 ⇄ 黑夜
+        const saved = localStorage.getItem('theme') || 'light';
         applyTheme(saved);
         $('themeToggle')?.addEventListener('click', cycleTheme);
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-            if (localStorage.getItem('theme') === 'auto') applyTheme('auto');
-        });
     }
 
     function applyTheme(theme) {
-        const actual = theme === 'auto'
-            ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-            : theme;
+        const actual = theme === 'dark' ? 'dark' : 'light';
         document.documentElement.setAttribute('data-theme', actual);
-        localStorage.setItem('theme', theme);
+        localStorage.setItem('theme', actual);
         const icon = $('themeToggle')?.querySelector('i');
         const btn = $('themeToggle');
-        const labels = { light: '浅色模式', dark: '深色模式', auto: '自动模式' };
-        if (icon) icon.className = { light: 'fas fa-moon', dark: 'fas fa-sun', auto: 'fas fa-adjust' }[theme];
-        if (btn) btn.title = labels[theme] || '切换主题';
+        const labels = { light: '白天模式', dark: '黑夜模式' };
+        if (icon) icon.className = actual === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+        if (btn) {
+            btn.title = labels[actual];
+            btn.setAttribute('aria-checked', actual === 'dark' ? 'true' : 'false');
+        }
     }
 
     function cycleTheme() {
-        const themes = ['light', 'dark', 'auto'];
-        const current = localStorage.getItem('theme') || 'auto';
-        applyTheme(themes[(themes.indexOf(current) + 1) % themes.length]);
+        const current = localStorage.getItem('theme') || 'light';
+        applyTheme(current === 'dark' ? 'light' : 'dark');
     }
 
     function loadCachedData() {
