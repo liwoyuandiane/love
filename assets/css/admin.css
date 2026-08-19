@@ -177,7 +177,7 @@
         .admin-container {
             max-width: 1300px;
             margin: 0 auto;
-            padding: 25px 24px;
+            padding: 25px 24px 70px;
             display: none;
             position: relative;
             z-index: 1;
@@ -241,41 +241,53 @@
             background: rgba(255, 107, 157, 0.15);
             border-color: rgba(255, 107, 157, 0.3);
         }
-        /* 后台页脚（版本号 + 版权） */
+        /* 后台页脚：固定在视口底部居中（版本号 + 版权） */
         .admin-footer {
-            margin-top: 40px;
-            padding: 18px 20px 24px;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 16px;
+            background: rgba(12, 10, 24, 0.45);
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid var(--card-border);
             text-align: center;
+            z-index: 90;
         }
 
         .admin-footer-content {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            color: var(--text-muted);
-            font-size: 0.85rem;
+            justify-content: center;
+            gap: 6px;
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            line-height: 1;
         }
 
         .admin-footer-copy {
             display: inline-flex;
             align-items: center;
             gap: 6px;
+            letter-spacing: 0.3px;
         }
 
-        .admin-footer-copy i { color: var(--primary); font-size: 0.8rem; }
+        .admin-footer-copy i { color: var(--primary); font-size: 0.75rem; }
 
-        .admin-footer-sep { opacity: 0.5; }
+        .admin-footer-sep { opacity: 0.4; margin: 0 2px; }
 
         .admin-footer-version {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
             background: rgba(255, 107, 157, 0.12);
-            border: 1px solid rgba(255, 107, 157, 0.3);
+            border: 1px solid rgba(255, 107, 157, 0.35);
             border-radius: 20px;
-            padding: 4px 12px;
+            padding: 4px 11px;
+            margin-left: 4px;
             color: var(--primary-light);
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             font-weight: 600;
             cursor: pointer;
             font-family: inherit;
@@ -286,7 +298,8 @@
 
         .admin-footer-version:hover {
             background: rgba(255, 107, 157, 0.25);
-            border-color: rgba(255, 107, 157, 0.5);
+            border-color: rgba(255, 107, 157, 0.55);
+            transform: translateY(-1px);
         }
 
         .admin-footer-version .version-dot {
