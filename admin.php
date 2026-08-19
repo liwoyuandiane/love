@@ -134,8 +134,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         <input type="text" class="form-input" id="anniversaryTitle" required maxlength="200" placeholder="例如：相识纪念日">
                     </div>
                     <div class="form-group">
-                        <label>日期（可选）</label>
-                        <input type="date" class="form-input" id="anniversaryDate">
+                        <label class="required-field">日期</label>
+                        <input type="date" class="form-input" id="anniversaryDate" required>
+                        <small style="color: var(--text-muted); font-size: 0.8rem;">必填项，请选择一个日期</small>
                     </div>
                     <div class="form-group">
                         <label>类型</label>
@@ -179,8 +180,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         <input type="text" class="form-input" id="wishlistDesc" maxlength="500" placeholder="愿望描述...">
                     </div>
                     <div class="form-group">
-                        <label>日期（可选）</label>
+                        <label>日期</label>
                         <input type="date" class="form-input" id="wishlistDate">
+                        <small style="color: var(--text-muted); font-size: 0.8rem;">可选，填写愿望实现的日期</small>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> 添加愿望</button>

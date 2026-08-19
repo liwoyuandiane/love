@@ -5,7 +5,7 @@
 
 require_once __DIR__ . '/db.php';
 
-define('SALT_ROUNDS', 13);
+define('SALT_ROUNDS', 12);
 define('MAX_LOGIN_ATTEMPTS', 5);
 define('LOCKOUT_DURATION', 15 * 60);
 
@@ -123,6 +123,12 @@ function login(string $username, string $password): array {
     }
     
     clearLoginAttempts($db, $username);
+
+    // 哈希成本低于当前配置时自动重哈希升级，保证登录速度与一致性
+    if (password_needs_rehash($user['password'], PASSWORD_BCRYPT, ['cost' => SALT_ROUNDS])) {
+        $stmt = $db->prepare("UPDATE admin_users SET password = ? WHERE id = ?");
+        $stmt->execute([hashPassword($password), $user['id']]);
+    }
 
     session_regenerate_id(true);
 

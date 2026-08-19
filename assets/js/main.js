@@ -112,13 +112,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 const newData = result.data;
                 const newHash = JSON.stringify(newData);
                 if (newHash !== lastDataHash) {
+                    const prevAnn = siteData?.coupleInfo?.anniversary || null;
                     siteData = newData;
                     photos = newData.photos || [];
                     lastDataHash = newHash;
                     cacheData(newData);
+                    renderCoupleInfo();
+                    renderFooterIcp();
                     renderLists();
                     renderPhotos();
                     renderMusic();
+                    const curAnn = newData.coupleInfo?.anniversary || null;
+                    if (prevAnn !== null && curAnn !== prevAnn) {
+                        clearInterval(timerInterval);
+                        startTimer();
+                    }
                 }
             }
         } catch (e) {
@@ -150,11 +158,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function loadSiteData() {
+        let inited = false;
+
+        // 1) 优先用本地缓存立即渲染名字和数据，避免等待网络（5 分钟内秒出）
+        const cached = loadCachedData();
+        if (cached && cached.coupleInfo) {
+            siteData = cached;
+            photos = cached.photos || [];
+            lastDataHash = JSON.stringify(cached);
+            renderWithData();
+            inited = true;
+        }
+
+        // 2) 后台拉取最新数据，有变化才增量刷新
         try {
             const res = await fetch(`${API_BASE}/data`);
             if (res.status === 401) {
-                siteData = {};
-                renderWithData();
+                if (!inited) { siteData = {}; renderWithData(); }
                 return;
             }
             const result = await res.json();
@@ -162,25 +182,43 @@ document.addEventListener('DOMContentLoaded', function() {
                 const newData = result.data;
                 const newHash = JSON.stringify(newData);
                 if (newHash !== lastDataHash) {
+                    const prevAnn = siteData?.coupleInfo?.anniversary || null;
                     siteData = newData;
                     photos = newData.photos || [];
                     lastDataHash = newHash;
                     cacheData(newData);
+                    if (inited) {
+                        renderCoupleInfo();
+                        renderFooterIcp();
+                        renderLists();
+                        renderPhotos();
+                        renderMusic();
+                        const curAnn = newData.coupleInfo?.anniversary || null;
+                        if (prevAnn !== null && curAnn !== prevAnn) {
+                            clearInterval(timerInterval);
+                            startTimer();
+                        }
+                    } else {
+                        renderWithData();
+                    }
+                } else if (!inited) {
                     renderWithData();
                 }
-            } else {
+            } else if (!inited) {
                 siteData = {};
                 renderWithData();
             }
         } catch (e) {
-            const cached = loadCachedData();
-            if (cached) {
-                siteData = cached;
-                photos = cached.photos || [];
-                renderWithData();
-            } else {
-                siteData = {};
-                renderWithData();
+            if (!inited) {
+                const fallback = loadCachedData();
+                if (fallback) {
+                    siteData = fallback;
+                    photos = fallback.photos || [];
+                    renderWithData();
+                } else {
+                    siteData = {};
+                    renderWithData();
+                }
             }
         }
     }
