@@ -6,6 +6,7 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/logger.php';
 require_once __DIR__ . '/../includes/RateLimiter.php';
 
@@ -17,6 +18,15 @@ if ($method === 'POST') {
     $action = $_GET['action'] ?? 'login';
 
     if ($action === 'login') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $username = trim($data['username'] ?? '');
+        $password = $data['password'] ?? '';
+
+        if (empty($username) || empty($password)) {
+            http_response_code(400);
+            jsonResponse(false, null, '请填写用户名和密码', 'VALIDATION_ERROR');
+        }
+
         $clientIp = RateLimiter::getClientIp();
         $identifier = 'login:' . $clientIp;
 
@@ -25,21 +35,17 @@ if ($method === 'POST') {
             jsonResponse(false, null, '请求过于频繁，请稍后再试', 'RATE_LIMITED');
         }
 
-        $data = json_decode(file_get_contents('php://input'), true);
-        $username = trim($data['username'] ?? '');
-        $password = $data['password'] ?? '';
-
-        if (empty($username) || empty($password)) {
-            jsonResponse(false, null, '请填写用户名和密码', 'VALIDATION_ERROR');
-        }
-
         try {
             $result = login($username, $password);
 
             if ($result['success']) {
                 RateLimiter::clear($identifier);
-                jsonResponse(true, ['username' => $_SESSION['user_username']], '登录成功');
+                jsonResponse(true, [
+                    'username' => $_SESSION['user_username'],
+                    'csrf_token' => CSRF::generate()
+                ], '登录成功');
             } else {
+                http_response_code(401);
                 jsonResponse(false, null, $result['message'], 'AUTH_FAILED');
             }
         } catch (Exception $e) {

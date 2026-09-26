@@ -33,19 +33,10 @@ ensureSession();
     <link rel="stylesheet" href="<?php echo asset('assets/css/fonts.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset('assets/css/fontawesome.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset('assets/css/style.css'); ?>">
-    <script>
-        (function () {
-            try {
-                var t = localStorage.getItem('theme') || 'light';
-                document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
-            } catch (e) { /* 隐私模式等场景忽略 */ }
-        })();
-    </script>
+    <meta name="csrf-token" content="<?php echo htmlspecialchars(CSRF::generate(), ENT_QUOTES, 'UTF-8'); ?>">
+    <script src="<?php echo asset('assets/js/boot.js'); ?>"></script>
 </head>
 <body>
-    <script>
-        window.CSRF_TOKEN = <?php echo json_encode(CSRF::generate()); ?>;
-    </script>
     <a href="/admin.php" class="admin-link"><i class="fas fa-cog"></i> 管理</a>
     <button class="theme-toggle" id="themeToggle" type="button" role="switch" aria-checked="false" title="切换到黑夜模式">
         <span class="theme-toggle-track">
@@ -62,7 +53,7 @@ ensureSession();
         <div class="container">
             <header>
                 <h1 class="couple-names">
-                    <span id="name1"></span> <span id="loveHeart" style="color: var(--primary); cursor: pointer; transition: transform 0.3s;" title="点击有惊喜!">❤</span> <span id="name2"></span>
+                    <span id="name1"></span> <span id="loveHeart" class="love-heart" title="点击有惊喜!">❤</span> <span id="name2"></span>
                 </h1>
 
                 <div class="heart-divider">
@@ -109,7 +100,7 @@ ensureSession();
             </header>
 
             <section class="section fade-in">
-                <div class="section-header" style="margin-top: 50px;">
+                <div class="section-header section-header-offset">
                     <h2 class="section-title">纪念时间线</h2>
                     <p class="section-subtitle">我们的故事</p>
                 </div>
@@ -161,7 +152,7 @@ ensureSession();
             <div class="footer-quote">
                 真正的爱情故事永远不会结束，因为它们在心中永存。
             </div>
-            <div class="footer-icp" id="footer-icp" style="margin-top: 10px; font-size: 0.8rem; color: rgba(255,255,255,0.5);"></div>
+            <div class="footer-icp" id="footer-icp"></div>
         </footer>
     </div>
 
@@ -181,9 +172,9 @@ ensureSession();
     </audio>
 
     <div class="lightbox" id="lightbox">
-        <span class="lightbox-close" id="lightbox-close">&times;</span>
-        <span class="lightbox-nav lightbox-prev" id="lightbox-prev"><i class="fas fa-chevron-left"></i></span>
-        <span class="lightbox-nav lightbox-next" id="lightbox-next"><i class="fas fa-chevron-right"></i></span>
+        <button type="button" class="lightbox-close" id="lightbox-close" aria-label="关闭">&times;</button>
+        <button type="button" class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="上一张"><i class="fas fa-chevron-left"></i></button>
+        <button type="button" class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="下一张"><i class="fas fa-chevron-right"></i></button>
         <div class="lightbox-content">
             <img src="" alt="" id="lightbox-img">
         </div>

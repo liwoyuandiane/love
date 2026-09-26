@@ -7,6 +7,10 @@
 class BaseController {
     protected function requireAuth(): void {
         if (!isLoggedIn()) {
+            if (function_exists('consumeSessionExpiredFlag') && consumeSessionExpiredFlag()) {
+                http_response_code(401);
+                jsonResponse(false, null, '登录已过期，请重新登录', 'SESSION_EXPIRED');
+            }
             http_response_code(401);
             jsonResponse(false, null, '请先登录', 'UNAUTHORIZED');
         }
@@ -24,7 +28,11 @@ class BaseController {
     }
 
     protected function getJsonInput(): array {
-        $data = json_decode(file_get_contents('php://input'), true);
+        $raw = file_get_contents('php://input');
+        if ($raw === '' || $raw === false) {
+            return [];
+        }
+        $data = json_decode($raw, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             http_response_code(400);
             jsonResponse(false, null, '无效的JSON数据', 'VALIDATION_ERROR');
@@ -52,13 +60,19 @@ class BaseController {
         jsonResponse(false, null, '操作失败', 'SERVER_ERROR');
     }
 
-    protected function getIdFromInput(): int {
-        $data = $this->getJsonInput();
-        $id = intval($data['id'] ?? 0);
+    protected function resolveId(array $data = []): int {
+        $id = intval($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            $id = intval($data['id'] ?? 0);
+        }
         if ($id <= 0) {
             $this->error('无效的ID', 'VALIDATION_ERROR');
         }
         return $id;
+    }
+
+    protected function getIdFromInput(): int {
+        return $this->resolveId($this->getJsonInput());
     }
 
     protected function validateRequired(array $data, array $fields): void {

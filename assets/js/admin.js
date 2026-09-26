@@ -8,7 +8,10 @@ const ADMIN_API = {
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 
-const csrfFetch = async (url, options = {}) => {
+const csrfFetch = (url, options = {}) => {
+    if (typeof window.csrfFetch === 'function') {
+        return window.csrfFetch(url, options);
+    }
     const headers = { ...options.headers };
     if (window.CSRF_TOKEN) {
         headers['X-CSRF-Token'] = window.CSRF_TOKEN;
@@ -59,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => { checkAuthStatus(); setupEv
             const current = (window.APP_VERSION || '').replace(/^v/i, '');
             if (latest && compareVersions(latest, current) > 0) {
                 badge.classList.add('has-update');
-                if (dot) { dot.style.display = 'inline-block'; dot.title = '发现新版本 v' + latest; }
+                if (dot) { dot.classList.remove('is-hidden'); dot.title = '发现新版本 v' + latest; }
                 badge.title = '当前 v' + current + '，最新 v' + latest + '（点击前往发布页）';
                 if (manual) window.open('https://github.com/' + (window.GITHUB_REPO || '') + '/releases/latest', '_blank');
             } else {
@@ -81,12 +84,12 @@ const checkAuthStatus = async () => {
             isAdmin = result.isAdmin || (result.role === 'admin');
             window.IS_ADMIN = isAdmin;
             filterTabsByRole();
-            $('loginOverlay').style.display = 'none';
+            $('loginOverlay').classList.add('is-hidden');
             $('adminContainer').classList.add('active');
             loadAllData();
             startPeriodicSync();
         } else {
-            $('loginOverlay').style.display = 'flex';
+            $('loginOverlay').classList.remove('is-hidden');
             $('adminContainer').classList.remove('active');
         }
     } catch (e) { console.error('Auth check error:', e); }
@@ -111,7 +114,7 @@ const stopPeriodicSync = () => {
 const filterTabsByRole = () => {
     $$('.tab[data-role]').forEach(tab => {
         if (tab.dataset.role !== 'admin') return;
-        tab.style.display = isAdmin ? '' : 'none';
+        tab.classList.toggle('is-hidden', !isAdmin);
     });
     if (!isAdmin) {
         const firstAllowed = $$('.tab:not([data-role])')[0];
@@ -121,7 +124,7 @@ const filterTabsByRole = () => {
 
 const logout = async () => {
     stopPeriodicSync();
-    try { await fetch(ADMIN_API.logout, { method: 'POST', credentials: 'include' }); } catch (e) {}
+    try { await csrfFetch(ADMIN_API.logout, { method: 'POST', credentials: 'include' }); } catch (e) {}
     window.location.href = '/';
 };
 
@@ -147,8 +150,8 @@ const setupEventListeners = () => {
     });
     $$('input[name="sourceType"]').forEach(r => r.addEventListener('change', () => {
         const isLocal = r.value === 'local';
-        $('localPathGroup').style.display = isLocal ? 'block' : 'none';
-        $('urlPathGroup').style.display = isLocal ? 'none' : 'block';
+        $('localPathGroup')?.classList.toggle('is-hidden', !isLocal);
+        $('urlPathGroup')?.classList.toggle('is-hidden', isLocal);
         updateMusicPreview();
     }));
     $('musicUrl')?.addEventListener('input', updateMusicPreview);
@@ -159,19 +162,24 @@ const setupEventListeners = () => {
         if (photoFile.files.length) {
             const file = photoFile.files[0];
             fileNameDisplay.textContent = file.name;
-            fileNameDisplay.style.display = 'block';
+            fileNameDisplay.classList.add('is-visible');
             uploadIcon.className = 'fas fa-check-circle';
-            uploadIcon.style.color = 'var(--success)';
+            uploadIcon.classList.add('is-success');
             uploadText.textContent = '已选择文件';
-            uploadHint.style.display = 'none';
-            fileArea.style.borderColor = 'var(--success)';
+            uploadHint.classList.add('is-hidden');
+            fileArea.classList.add('has-file');
+            fileArea.classList.remove('is-dragover');
         }
     };
     fileArea?.addEventListener('click', () => photoFile?.click());
     photoFile?.addEventListener('change', updateFileDisplay);
-    fileArea?.addEventListener('dragover', e => { e.preventDefault(); fileArea.style.borderColor = 'var(--primary)'; });
-    fileArea?.addEventListener('dragleave', () => { if (!photoFile.files.length) fileArea.style.borderColor = 'rgba(255, 255, 255, 0.15)'; });
-    fileArea?.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files.length) { photoFile.files = e.dataTransfer.files; updateFileDisplay(); } else { fileArea.style.borderColor = 'rgba(255, 255, 255, 0.15)'; } });
+    fileArea?.addEventListener('dragover', e => { e.preventDefault(); fileArea.classList.add('is-dragover'); });
+    fileArea?.addEventListener('dragleave', () => { if (!photoFile.files.length) fileArea.classList.remove('is-dragover'); });
+    fileArea?.addEventListener('drop', e => {
+        e.preventDefault();
+        if (e.dataTransfer.files.length) { photoFile.files = e.dataTransfer.files; updateFileDisplay(); }
+        else fileArea.classList.remove('is-dragover');
+    });
 };
 
 const handleLogin = async () => {
@@ -181,14 +189,14 @@ const handleLogin = async () => {
         const res = await fetch(ADMIN_API.verify, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ username, password }) });
         const result = await res.json();
         if (result.success) {
+            if (result.data && result.data.csrf_token) window.CSRF_TOKEN = result.data.csrf_token;
             isLoggedIn = true;
             isAdmin = true;
             window.IS_ADMIN = true;
             filterTabsByRole();
-            $('loginOverlay').style.display = 'none';
-            $('adminContainer').style.display = 'block';
+            $('loginOverlay').classList.add('is-hidden');
             $('adminContainer').classList.add('active');
-            $('loadingOverlay').style.display = 'flex';
+            $('loadingOverlay').classList.remove('is-hidden');
             loadAllData();
             startPeriodicSync();
         } else {
@@ -233,7 +241,7 @@ const loadAllData = async (showError = true) => {
             csrfFetch(`${API_BASE}/admin-status`, { credentials: 'include' })
         ]);
 
-        $('loadingOverlay').style.display = 'none';
+        $('loadingOverlay').classList.add('is-hidden');
 
         if (dataRes.ok) {
             const data = await dataRes.json();
@@ -251,7 +259,7 @@ const loadAllData = async (showError = true) => {
         renderAllSections();
     } catch (e) {
         console.error('loadAllData error:', e);
-        $('loadingOverlay').style.display = 'none';
+        $('loadingOverlay').classList.add('is-hidden');
         if (showError) showToast('数据加载失败，请刷新页面', 'error');
     }
 };
@@ -361,8 +369,8 @@ const renderAnniversaryTable = () => {
     tbody.innerHTML = items.map(item => `
         <tr><td>${utils.escapeHtml(item.title)}</td><td>${utils.formatDate(item.date) || '-'}</td><td>${typeLabels[item.type] || '纪念日'}</td>
         <td>${item.reminder_days > 0 ? `提前${item.reminder_days}天` : '-'}</td>
-        <td class="actions"><button class="btn btn-secondary btn-sm" onclick="editItem('anniversary',${item.id},'${utils.escapeJs(item.title)}','${utils.escapeJs(utils.formatDate(item.date))}','${utils.escapeJs(item.description || '')}')"><i class="fas fa-edit"></i></button>
-        <button class="btn btn-danger btn-sm" onclick="deleteItem('anniversary',${item.id})"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+        <td class="actions"><button class="btn btn-secondary btn-sm" data-action="edit-item" data-type="anniversary" data-id="${item.id}" data-title="${utils.escapeHtml(item.title)}" data-date="${utils.escapeHtml(utils.formatDate(item.date) || '')}" data-desc="${utils.escapeHtml(item.description || '')}"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-danger btn-sm" data-action="delete-item" data-type="anniversary" data-id="${item.id}"><i class="fas fa-trash"></i></button></td></tr>`).join('');
 };
 
 const handleAnniversarySubmit = async e => {
@@ -389,10 +397,10 @@ const renderWishlistTable = () => {
     tbody.innerHTML = items.map(item => `
         <tr class="${item.completed ? 'completed' : ''}">
         <td>${utils.escapeHtml(item.title)}</td><td>${utils.escapeHtml(item.description || '-')}</td><td>${utils.formatDate(item.date) || '-'}</td>
-        <td><i class="fas ${item.completed ? 'fa-check-circle' : 'fa-circle'}" style="color:${item.completed ? 'var(--success)' : 'var(--text-muted)'}"></i></td>
-        <td class="actions"><button class="btn btn-secondary btn-sm" onclick="toggleWishlistAdmin(${item.id})" title="${item.completed ? '标记未完成' : '标记完成'}"><i class="fas ${item.completed ? 'fa-undo' : 'fa-check'}"></i></button>
-        <button class="btn btn-secondary btn-sm" onclick="editItem('wishlist',${item.id},'${utils.escapeJs(item.title)}','${utils.escapeJs(utils.formatDate(item.date))}','${utils.escapeJs(item.description || '')}')"><i class="fas fa-edit"></i></button>
-        <button class="btn btn-danger btn-sm" onclick="deleteItem('wishlist',${item.id})"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+        <td><i class="fas ${item.completed ? 'fa-check-circle is-done' : 'fa-circle is-pending'}"></i></td>
+        <td class="actions"><button class="btn btn-secondary btn-sm" data-action="toggle-wishlist-admin" data-id="${item.id}" title="${item.completed ? '标记未完成' : '标记完成'}"><i class="fas ${item.completed ? 'fa-undo' : 'fa-check'}"></i></button>
+        <button class="btn btn-secondary btn-sm" data-action="edit-item" data-type="wishlist" data-id="${item.id}" data-title="${utils.escapeHtml(item.title)}" data-date="${utils.escapeHtml(utils.formatDate(item.date) || '')}" data-desc="${utils.escapeHtml(item.description || '')}"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-danger btn-sm" data-action="delete-item" data-type="wishlist" data-id="${item.id}"><i class="fas fa-trash"></i></button></td></tr>`).join('');
 };
 
 window.toggleWishlistAdmin = async function(id) {
@@ -440,8 +448,8 @@ const renderExploreTable = () => {
     if (!items.length) { tbody.innerHTML = emptyState('fa-map-marked-alt', '暂无探索地点'); return; }
     tbody.innerHTML = items.map(item => `
         <tr><td>${utils.escapeHtml(item.title)}</td><td>${utils.escapeHtml(item.description || '-')}</td><td>${utils.formatDate(item.date) || '-'}</td>
-        <td class="actions"><button class="btn btn-secondary btn-sm" onclick="editItem('explore',${item.id},'${utils.escapeJs(item.title)}','${utils.escapeJs(utils.formatDate(item.date))}','${utils.escapeJs(item.description || '')}')"><i class="fas fa-edit"></i></button>
-        <button class="btn btn-danger btn-sm" onclick="deleteItem('explore',${item.id})"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+        <td class="actions"><button class="btn btn-secondary btn-sm" data-action="edit-item" data-type="explore" data-id="${item.id}" data-title="${utils.escapeHtml(item.title)}" data-date="${utils.escapeHtml(utils.formatDate(item.date) || '')}" data-desc="${utils.escapeHtml(item.description || '')}"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-danger btn-sm" data-action="delete-item" data-type="explore" data-id="${item.id}"><i class="fas fa-trash"></i></button></td></tr>`).join('');
 };
 
 const handleExploreSubmit = async e => {
@@ -464,15 +472,18 @@ const handleExploreSubmit = async e => {
 const renderPhotoGrid = () => {
     const photos = siteData?.photos || [];
     const grid = $('photoGrid');
-    if (!photos.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1|/1"><i class="fas fa-images"></i><p>暂无照片</p></div>'; return; }
+    if (!photos.length) { grid.innerHTML = '<div class="empty-state"><i class="fas fa-images"></i><p>还没有照片，可通过链接或上传添加</p></div>'; return; }
     const safeUrl = url => isValidUrl(url) ? url : '';
     grid.innerHTML = photos.map(p => `
-        <div class="photo-item"><img src="${safeUrl(p.url)}" alt="${utils.escapeHtml(p.caption || '')}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%23333%22 width=%22200%22 height=%22200%22/><text x=%2250%%22 y=%2250%%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2214%22>加载失败</text></svg>'">
+        <div class="photo-item"><img src="${utils.escapeHtml(safeUrl(p.url))}" alt="${utils.escapeHtml(p.caption || '')}" data-fallback-src="data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%23333%22 width=%22200%22 height=%22200%22/><text x=%2250%%22 y=%2250%%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2214%22>加载失败</text></svg>">
         <p class="caption">${utils.escapeHtml(p.caption || '无说明')}</p>
         <div class="actions">
-            <button class="btn btn-primary btn-sm" onclick="openPhotoEditModal(${p.id}, '${utils.escapeHtml(p.caption || '')}', '${utils.escapeHtml(p.url || '')}', '${p.source_type || 'local'}')" title="编辑"><i class="fas fa-edit"></i></button>
-            <button class="btn btn-danger btn-sm" onclick="deleteItem('photo',${p.id})"><i class="fas fa-trash"></i></button>
+            <button class="btn btn-primary btn-sm" data-action="edit-photo" data-id="${p.id}" title="编辑"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-danger btn-sm" data-action="delete-item" data-type="photo" data-id="${p.id}"><i class="fas fa-trash"></i></button>
         </div></div>`).join('');
+    grid.querySelectorAll('img[data-fallback-src]').forEach(img => {
+        img.addEventListener('error', () => { img.src = img.dataset.fallbackSrc; }, { once: true });
+    });
 };
 
 const isValidUrl = url => {
@@ -485,6 +496,17 @@ const isValidUrl = url => {
 
 let currentEditingPhotoId = null;
 let currentEditingPhotoType = null;
+
+const setPhotoPreview = (container, src) => {
+    container.innerHTML = '';
+    const img = document.createElement('img');
+    img.alt = '预览';
+    img.addEventListener('error', () => {
+        container.innerHTML = '<span class="error-msg">图片加载失败</span>';
+    }, { once: true });
+    img.src = src;
+    container.appendChild(img);
+};
 
 window.openPhotoEditModal = (id, caption, url, sourceType) => {
     currentEditingPhotoId = id;
@@ -499,29 +521,28 @@ window.openPhotoEditModal = (id, caption, url, sourceType) => {
 
     if (currentEditingPhotoType === 'url') {
         modalTitle.innerHTML = '<i class="fas fa-link"></i> 编辑链接图片';
-        urlGroup.style.display = 'block';
-        localPathGroup.style.display = 'none';
+        urlGroup.classList.remove('is-hidden');
+        localPathGroup.classList.add('is-hidden');
         urlInput.value = url;
         if (url && isValidUrl(url)) {
-            preview.innerHTML = `<img src="${utils.escapeHtml(url)}" alt="预览" onerror="this.parentElement.innerHTML='<span class=error-msg>图片加载失败</span>'">`;
+            setPhotoPreview(preview, url);
         } else {
             preview.innerHTML = '<span class="error-msg">无效的图片链接</span>';
         }
         urlInput.oninput = () => {
             const u = urlInput.value.trim();
             if (u && isValidUrl(u)) {
-                preview.innerHTML = `<img src="${utils.escapeHtml(u)}" alt="预览" onerror="this.parentElement.innerHTML='<span class=error-msg>图片加载失败</span>'">`;
+                setPhotoPreview(preview, u);
             } else {
                 preview.innerHTML = '<span class="error-msg">请输入有效的图片链接</span>';
             }
         };
     } else {
         modalTitle.innerHTML = '<i class="fas fa-upload"></i> 编辑本地上传照片';
-        urlGroup.style.display = 'none';
-        localPathGroup.style.display = 'block';
+        urlGroup.classList.add('is-hidden');
+        localPathGroup.classList.remove('is-hidden');
         localPathInput.value = url;
-        const fullUrl = window.location.origin + url;
-        preview.innerHTML = `<img src="${utils.escapeHtml(fullUrl)}" alt="预览" onerror="this.parentElement.innerHTML='<span class=error-msg>图片加载失败</span>'">`;
+        setPhotoPreview(preview, window.location.origin + url);
     }
     modal.classList.add('active');
 };
@@ -578,11 +599,11 @@ const handlePhotoUpload = async e => {
             fileInput.value = '';
             $('photoCaption').value = '';
             const fileNameDisplay = $('fileNameDisplay'), uploadIcon = $('uploadIcon'), uploadText = $('uploadText'), uploadHint = $('uploadHint'), fileArea = $('fileUploadArea');
-            if (fileNameDisplay) { fileNameDisplay.style.display = 'none'; fileNameDisplay.textContent = ''; }
-            if (uploadIcon) { uploadIcon.className = 'fas fa-cloud-upload-alt'; uploadIcon.style.color = ''; }
+            if (fileNameDisplay) { fileNameDisplay.classList.remove('is-visible'); fileNameDisplay.textContent = ''; }
+            if (uploadIcon) { uploadIcon.className = 'fas fa-cloud-upload-alt'; }
             if (uploadText) uploadText.textContent = '点击或拖拽图片到此处上传';
-            if (uploadHint) uploadHint.style.display = '';
-            if (fileArea) fileArea.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+            if (uploadHint) uploadHint.classList.remove('is-hidden');
+            if (fileArea) fileArea.classList.remove('has-file', 'is-dragover');
             if (result.data) addToLocalList('photos', result.data);
             renderPhotoGrid();
         }
@@ -615,8 +636,8 @@ const renderMusicForm = () => {
     const isLocal = source_type === 'local';
     const localPathGroup = $('localPathGroup');
     const urlPathGroup = $('urlPathGroup');
-    if (localPathGroup) localPathGroup.style.display = isLocal ? 'block' : 'none';
-    if (urlPathGroup) urlPathGroup.style.display = isLocal ? 'none' : 'block';
+    if (localPathGroup) localPathGroup.classList.toggle('is-hidden', !isLocal);
+    if (urlPathGroup) urlPathGroup.classList.toggle('is-hidden', isLocal);
     if (isLocal) { const lp = $('localPath'); if (lp) lp.value = source_url; }
     else { const up = $('musicUrl'); if (up) up.value = source_url; }
     const bu = $('musicBackupUrl'); if (bu) bu.value = backup_url || '';
@@ -632,8 +653,8 @@ const updateMusicPreview = () => {
     const urlInput = sourceType === 'local' ? $('localPath') : $('musicUrl');
     const url = urlInput ? urlInput.value.trim() : '';
     const preview = $('musicPreview'), audio = $('previewAudio');
-    if (url) { preview.style.display = 'block'; audio.src = url; }
-    else preview.style.display = 'none';
+    if (url) { preview.classList.remove('is-hidden'); audio.src = url; }
+    else preview.classList.add('is-hidden');
 };
 
 const handleMusicSubmit = async e => {
@@ -707,7 +728,7 @@ window.editItem = function(type, id, title, date, description) {
         <div class="form-group"><label>标题</label><input type="text" class="form-input" id="editTitle" value="${utils.escapeHtml(title)}" required maxlength="200"></div>
         <div class="form-group"><label>日期（可选）</label><input type="date" class="form-input" id="editDate" value="${utils.escapeHtml(date)}"></div>
         <div class="form-group"><label>描述（可选）</label><input type="text" class="form-input" id="editDescription" value="${utils.escapeHtml(description)}" maxlength="500"></div>
-        <div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="closeEditModal()">取消</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存</button></div>`;
+        <div class="modal-actions"><button type="button" class="btn btn-secondary" data-action="close-edit">取消</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存</button></div>`;
     form.onsubmit = async e => {
         e.preventDefault();
         const updateData = { title: $('editTitle').value.trim(), date: $('editDate').value || null, description: $('editDescription').value.trim() || null };
@@ -814,9 +835,9 @@ const renderAuditLogTable = logs => {
     }
     tbody.innerHTML = logs.map(log => `
         <tr>
-            <td style="white-space:nowrap">${log.time || '-'}</td>
+            <td class="log-time">${log.time || '-'}</td>
             <td>${utils.escapeHtml(log.user || '-')}</td>
-            <td style="color:var(--text-muted);font-size:0.85rem">${utils.escapeHtml(log.ip || '-')}</td>
+            <td class="log-meta">${utils.escapeHtml(log.ip || '-')}</td>
             <td>${utils.escapeHtml(log.message || '-')}</td>
         </tr>`).join('');
 };
@@ -826,11 +847,89 @@ const renderLogPagination = data => {
     if (!container) return;
     if (data.total_pages <= 1) { container.innerHTML = ''; return; }
     let html = '';
-    if (data.page > 1) html += `<button class="btn btn-secondary btn-sm" onclick="loadAuditLogs(${data.page - 1})"><i class="fas fa-chevron-left"></i></button>`;
-    html += `<span style="padding:0 15px">第 ${data.page} / ${data.total_pages} 页，共 ${data.total} 条</span>`;
-    if (data.page < data.total_pages) html += `<button class="btn btn-secondary btn-sm" onclick="loadAuditLogs(${data.page + 1})"><i class="fas fa-chevron-right"></i></button>`;
+    if (data.page > 1) html += `<button class="btn btn-secondary btn-sm" data-action="log-page" data-page="${data.page - 1}"><i class="fas fa-chevron-left"></i></button>`;
+    html += `<span class="pagination-info">第 ${data.page} / ${data.total_pages} 页，共 ${data.total} 条</span>`;
+    if (data.page < data.total_pages) html += `<button class="btn btn-secondary btn-sm" data-action="log-page" data-page="${data.page + 1}"><i class="fas fa-chevron-right"></i></button>`;
     container.innerHTML = html;
 };
 
 $('logSearch')?.addEventListener('keypress', e => { if (e.key === 'Enter') { e.preventDefault(); loadAuditLogs(1); } });
 $('logLevel')?.addEventListener('change', () => loadAuditLogs(1));
+
+document.addEventListener('click', async (e) => {
+    const target = e.target.closest('[data-action]');
+    if (!target) return;
+    const action = target.dataset.action;
+    switch (action) {
+        case 'logout':
+            e.preventDefault();
+            await logout();
+            break;
+        case 'export':
+            e.preventDefault();
+            exportData();
+            break;
+        case 'import-trigger':
+            e.preventDefault();
+            $('importFile')?.click();
+            break;
+        case 'import-file':
+            break;
+        case 'log-search':
+            e.preventDefault();
+            loadAuditLogs(1);
+            break;
+        case 'log-refresh':
+            e.preventDefault();
+            refreshAuditLogs();
+            break;
+        case 'log-page':
+            e.preventDefault();
+            loadAuditLogs(parseInt(target.dataset.page, 10) || 1);
+            break;
+        case 'close-edit':
+            e.preventDefault();
+            closeEditModal();
+            break;
+        case 'close-photo-edit':
+            e.preventDefault();
+            closePhotoEditModal();
+            break;
+        case 'check-update':
+            e.preventDefault();
+            checkUpdate(true);
+            break;
+        case 'edit-item': {
+            e.preventDefault();
+            editItem(
+                target.dataset.type,
+                parseInt(target.dataset.id, 10),
+                target.dataset.title || '',
+                target.dataset.date || '',
+                target.dataset.desc || ''
+            );
+            break;
+        }
+        case 'delete-item':
+            e.preventDefault();
+            deleteItem(target.dataset.type, parseInt(target.dataset.id, 10));
+            break;
+        case 'toggle-wishlist-admin':
+            e.preventDefault();
+            toggleWishlistAdmin(parseInt(target.dataset.id, 10));
+            break;
+        case 'edit-photo': {
+            e.preventDefault();
+            const photoId = parseInt(target.dataset.id, 10);
+            const p = (siteData?.photos || []).find(x => x.id === photoId);
+            if (p) openPhotoEditModal(p.id, p.caption || '', p.url || '', p.source_type || 'local');
+            break;
+        }
+    }
+});
+
+$('importFile')?.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) importData(file);
+    e.target.value = '';
+});

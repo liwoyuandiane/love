@@ -1,8 +1,11 @@
 const escapeHtml = text => {
     if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 };
 
 const escapeJs = text => {
@@ -36,20 +39,21 @@ const throttle = (fn, limit) => { let p = false; return (...a) => { if (!p) { fn
 
 const createToast = (() => {
     let toast;
-    const colors = { info: 'rgba(100, 180, 255, 0.95)', error: 'rgba(255, 100, 100, 0.95)', success: 'rgba(100, 255, 150, 0.95)', warning: 'rgba(255, 200, 100, 0.95)' };
+    let hideTimer;
     return (msg, type = 'info', duration = 3000) => {
         if (!toast) {
             toast = document.createElement('div');
             toast.id = 'toast-notification';
-            toast.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);padding:14px 28px;border-radius:14px;z-index:2000;opacity:0;transition:all 0.4s ease;font-weight:500;max-width:90%;text-align:center;pointer-events:none';
+            toast.className = 'toast-notification';
             document.body.appendChild(toast);
         }
-        toast.style.background = colors[type] || colors.info;
-        toast.style.color = type === 'info' ? '#1a1a2e' : '#fff';
+        toast.className = 'toast-notification toast-' + (['info', 'error', 'success', 'warning'].includes(type) ? type : 'info');
         toast.textContent = msg;
-        requestAnimationFrame(() => { toast.style.opacity = '1'; toast.style.transform = 'translateX(-50%) translateY(0)'; });
-        setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(-50%) translateY(20px)'; }, duration);
+        requestAnimationFrame(() => { toast.classList.add('is-visible'); });
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => { toast.classList.remove('is-visible'); }, duration);
     };
 })();
 
+window.createToast = createToast;
 window.utils = { escapeHtml, escapeJs, formatDate, formatDateTime, fetchWithRetry, debounce, throttle, createToast };

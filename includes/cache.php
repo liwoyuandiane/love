@@ -50,16 +50,23 @@ class Cache {
         }
     }
 
+    /**
+     * 清除缓存。
+     * - 空 / '*'：清空全部 .cache
+     * - 非空：仅精确删除键为 $prefix 的文件（键文件名 key_md5hash.cache），避免 api_data_* 误删 api_data_xxx
+     */
     public static function clear(string $prefix = ''): void {
         self::ensureDir();
-        if (empty($prefix) || $prefix === '*') {
-            $files = glob(self::$cacheDir . '/*.cache');
-        } else {
-            $prefix = rtrim($prefix, '*');
-            $files = glob(self::$cacheDir . '/' . $prefix . '_*.cache');
+        if ($prefix === '' || $prefix === '*') {
+            $files = glob(self::$cacheDir . '/*.cache') ?: [];
+            foreach ($files as $file) {
+                if (is_file($file)) @unlink($file);
+            }
+            return;
         }
-        foreach ($files as $file) {
-            if (is_file($file)) @unlink($file);
+        $file = self::getFilePath($prefix);
+        if (is_file($file)) {
+            @unlink($file);
         }
     }
 

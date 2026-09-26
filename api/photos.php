@@ -94,7 +94,7 @@ class PhotoController extends BaseController {
             default => 'jpg'
         };
 
-        $filename = uniqid() . '.' . $ext;
+        $filename = bin2hex(random_bytes(16)) . '.' . $ext;
         $uploadDir = __DIR__ . '/../assets/uploads/';
 
         if (!is_dir($uploadDir)) {
@@ -142,20 +142,8 @@ class PhotoController extends BaseController {
             $this->error('不允许的 URL', 'VALIDATION_ERROR');
         }
 
-        $headers = @get_headers($url, 1);
-        if ($headers === false || strpos($headers[0], '200') === false) {
-            $this->error('图片 URL 无法访问或不存在', 'VALIDATION_ERROR');
-        }
-
-        $contentType = $headers['Content-Type'] ?? '';
-        if (is_array($contentType)) {
-            $contentType = $contentType[0];
-        }
-
-        $imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
-        if (!in_array(strtolower($contentType), $imageTypes)) {
-            $this->error('URL 必须指向图片文件', 'VALIDATION_ERROR');
-        }
+        $finalUrl = $this->probeImageUrl($url);
+        $url = $finalUrl;
 
         $stmt = $this->db->prepare("INSERT INTO photos (url, caption, source_type) VALUES (?, ?, 'url')");
         $stmt->execute([$url, $caption]);
@@ -170,16 +158,108 @@ class PhotoController extends BaseController {
         $this->success($newItem, '添加成功', 201);
     }
 
+    /**
+     * 逐跳探测图片 URL：关闭自动重定向，每一跳校验 Location 安全与最终 Content-Type
+     * 避免 get_headers 合并 header 时多跳场景 Content-Type 校验被绕过
+     */
+    private function probeImageUrl(string $url): string {
+        $imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+        $current = $url;
+        $maxHops = 3;
+
+        for ($hop = 0; $hop <= $maxHops; $hop++) {
+            if (!isUrlSafe($current)) {
+                $this->error('不允许的 URL（重定向目标不安全）', 'VALIDATION_ERROR');
+            }
+
+            $ch = curl_init($current);
+            curl_setopt_array($ch, [
+                CURLOPT_NOBODY => true,
+                CURLOPT_HEADER => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => false,
+                CURLOPT_TIMEOUT => 5,
+                CURLOPT_CONNECTTIMEOUT => 3,
+                CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+                CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+            ]);
+            $raw = curl_exec($ch);
+            $errno = curl_errno($ch);
+            $info = curl_getinfo($ch);
+            curl_close($ch);
+
+            if ($raw === false || $errno !== 0) {
+                $this->error('图片 URL 无法访问或不存在', 'VALIDATION_ERROR');
+            }
+
+            $status = (int)($info['http_code'] ?? 0);
+            $contentType = strtolower(trim(explode(';', (string)($info['content_type'] ?? ''))[0]));
+
+            // 3xx：校验 Location 后进入下一跳
+            if ($status >= 300 && $status < 400) {
+                $location = $this->extractHeader($raw, 'Location');
+                if ($location === '') {
+                    $this->error('图片 URL 无法访问或不存在', 'VALIDATION_ERROR');
+                }
+                $location = $this->resolveUrl($current, $location);
+                if (!isUrlSafe($location)) {
+                    $this->error('不允许的 URL（重定向目标不安全）', 'VALIDATION_ERROR');
+                }
+                $current = $location;
+                continue;
+            }
+
+            if ($status !== 200) {
+                $this->error('图片 URL 无法访问或不存在', 'VALIDATION_ERROR');
+            }
+
+            if (!in_array($contentType, $imageTypes, true)) {
+                $this->error('URL 必须指向图片文件', 'VALIDATION_ERROR');
+            }
+
+            return $current;
+        }
+
+        $this->error('重定向次数过多', 'VALIDATION_ERROR');
+        return $url; // unreachable
+    }
+
+    private function extractHeader(string $rawHeaders, string $name): string {
+        $pattern = '/^' . preg_quote($name, '/') . ':\s*(.+)$/mi';
+        if (!preg_match($pattern, $rawHeaders, $m)) {
+            return '';
+        }
+        $lines = explode("\r\n", $m[1]);
+        return trim($lines[0]);
+    }
+
+    private function resolveUrl(string $base, string $location): string {
+        if (preg_match('#^https?://#i', $location)) {
+            return $location;
+        }
+        $parts = parse_url($base);
+        if (!$parts || !isset($parts['scheme'], $parts['host'])) {
+            return $location;
+        }
+        $origin = $parts['scheme'] . '://' . $parts['host']
+            . (isset($parts['port']) ? ':' . $parts['port'] : '');
+        if (str_starts_with($location, '//')) {
+            return $parts['scheme'] . ':' . $location;
+        }
+        if (str_starts_with($location, '/')) {
+            return $origin . $location;
+        }
+        $path = $parts['path'] ?? '/';
+        $dir = rtrim(dirname($path), '/');
+        return $origin . ($dir === '' ? '' : $dir) . '/' . $location;
+    }
+
     private function update(): void {
         $this->requireAuth();
         $this->validateRequest();
 
         $data = $this->getJsonInput();
-        $id = intval($data['id'] ?? 0);
-
-        if ($id <= 0) {
-            $this->error('无效的ID', 'VALIDATION_ERROR');
-        }
+        $id = $this->resolveId($data);
 
         $caption = trim($data['caption'] ?? '');
         $url = isset($data['url']) ? trim($data['url']) : null;
@@ -207,15 +287,7 @@ class PhotoController extends BaseController {
         $this->requireAuth();
         $this->validateRequest();
 
-        $id = intval($_GET['id'] ?? 0);
-        if ($id <= 0) {
-            $data = $this->getJsonInput();
-            $id = intval($data['id'] ?? 0);
-        }
-
-        if ($id <= 0) {
-            $this->error('无效的ID', 'VALIDATION_ERROR');
-        }
+        $id = $this->resolveId($this->getJsonInput());
 
         $stmt = $this->db->prepare("SELECT * FROM photos WHERE id = ?");
         $stmt->execute([$id]);
@@ -225,7 +297,7 @@ class PhotoController extends BaseController {
             $uploadDir = realpath(__DIR__ . '/../assets/uploads/');
             $filePath = realpath(__DIR__ . '/..' . $photo['url']);
 
-            if ($filePath !== false && str_starts_with($filePath, $uploadDir)) {
+            if ($filePath !== false && $uploadDir !== false && str_starts_with($filePath, $uploadDir)) {
                 @unlink($filePath);
             }
         }

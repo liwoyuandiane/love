@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/csrf.php';
 
 define('SALT_ROUNDS', 12);
 define('MAX_LOGIN_ATTEMPTS', 5);
@@ -150,6 +151,10 @@ function login(string $username, string $password): array {
     $_SESSION['user_username'] = $user['username'];
     $_SESSION['user_role'] = $user['role'] ?? 'admin';
 
+    if (class_exists('CSRF')) {
+        CSRF::rotate();
+    }
+
     Logger::audit('User login success', ['username' => $username]);
 
     return ['success' => true, 'message' => '登录成功'];
@@ -173,8 +178,24 @@ function ensureSession(): void {
     }
 
     if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 1800)) {
-        logout();
+        if (isset($_SESSION['user_id'])) {
+            $_SESSION['session_expired'] = true;
+        }
+        unset(
+            $_SESSION['user_id'],
+            $_SESSION['user_username'],
+            $_SESSION['user_role'],
+            $_SESSION['last_activity']
+        );
         return;
     }
     $_SESSION['last_activity'] = time();
+}
+
+function consumeSessionExpiredFlag(): bool {
+    if (empty($_SESSION['session_expired'])) {
+        return false;
+    }
+    unset($_SESSION['session_expired']);
+    return true;
 }

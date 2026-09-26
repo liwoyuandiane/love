@@ -45,7 +45,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const $$ = sel => document.querySelectorAll(sel);
     const escape = utils.escapeHtml;
 
-    const csrfFetch = async (url, options = {}) => {
+    const csrfFetch = (url, options = {}) => {
+        if (typeof window.csrfFetch === 'function') {
+            return window.csrfFetch(url, options);
+        }
         const headers = { ...options.headers };
         if (window.CSRF_TOKEN) {
             headers['X-CSRF-Token'] = window.CSRF_TOKEN;
@@ -248,11 +251,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let icpHtml = '';
         if (icp_code) {
-            icpHtml += `<a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" style="color: inherit;">${escape(icp_code)}</a>`;
+            icpHtml += `<a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">${escape(icp_code)}</a>`;
         }
         if (police_record_code) {
             if (icpHtml) icpHtml += ' | ';
-            icpHtml += `<a href="https://www.beian.gov.cn/" target="_blank" rel="noopener" style="color: inherit;">${escape(police_record_code)}</a>`;
+            icpHtml += `<a href="https://www.beian.gov.cn/" target="_blank" rel="noopener">${escape(police_record_code)}</a>`;
         }
         footerIcp.innerHTML = icpHtml;
     }
@@ -286,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function emptyState(icon, msg) {
-        return `<li class="empty-state" style="padding:20px;text-align:center;color:var(--text-muted)"><i class="fas ${icon}" style="font-size:1.5rem;opacity:0.5"></i><p style="margin-top:10px;font-size:0.9rem">${msg}</p></li>`;
+        return `<li class="empty-state"><i class="fas ${icon}"></i><p>${msg}</p></li>`;
     }
 
     function renderAnniversaryList() {
@@ -294,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const items = siteData.anniversaries || [];
         if (!items.length) { list.innerHTML = emptyState('fa-calendar-heart','暂无纪念日'); return; }
         list.innerHTML = items.map(item => `
-            <li><span class="item-title"><i class="fas ${TYPE_ICONS[item.type]}" style="margin-right:8px;color:var(--primary)"></i>${escape(item.title)}</span>
+            <li><span class="item-title"><i class="fas ${TYPE_ICONS[item.type]} item-icon"></i>${escape(item.title)}</span>
             ${item.date ? `<span class="item-date">${item.date.split('T')[0]}</span>` : ''}</li>`).join('');
         renderAnniversaryTimeline(items);
     }
@@ -304,15 +307,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!container) return;
         if (!items.length) { container.innerHTML = '<div class="timeline-empty"><i class="fas fa-clock"></i><p>暂无时间线</p></div>'; return; }
         const sorted = [...items].sort((a, b) => a.date && b.date ? new Date(b.date) - new Date(a.date) : 1);
-        container.innerHTML = sorted.map((item, i) => `
-            <div class="timeline-item" style="animation-delay:${i*0.1}s">
+        container.innerHTML = sorted.map((item) => `
+            <div class="timeline-item">
                 <div class="timeline-marker"></div>
                 <div class="timeline-content">
-                    <span class="timeline-date"><i class="fas ${TYPE_ICONS[item.type]}" style="margin-right:6px"></i>${item.date ? item.date.split('T')[0] : '日期待定'}</span>
+                    <span class="timeline-date"><i class="fas ${TYPE_ICONS[item.type]} item-icon"></i>${item.date ? item.date.split('T')[0] : '日期待定'}</span>
                     <span class="timeline-title">${escape(item.title)}</span>
                     ${item.description ? `<p class="timeline-desc">${escape(item.description)}</p>` : ''}
                 </div>
             </div>`).join('');
+        container.querySelectorAll('.timeline-item').forEach((el, i) => {
+            el.style.setProperty('--delay', (i * 0.1) + 's');
+        });
     }
 
     function renderWishlistList() {
@@ -320,9 +326,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const items = siteData.wishlists || [];
         if (!items.length) { list.innerHTML = emptyState('fa-list-check','暂无愿望'); return; }
         list.innerHTML = items.map(item => `
-            <li class="${item.completed ? 'completed' : ''}" onclick="toggleWishlistCompletion(${item.id})">
+            <li class="${item.completed ? 'completed' : ''}" data-action="toggle-wishlist" data-id="${item.id}">
                 <span class="item-title">${escape(item.title)}</span>
-                <i class="${item.completed ? 'fas fa-check-circle' : 'far fa-circle'}" style="color:${item.completed ? 'var(--success)' : 'var(--primary-light)'};font-size:0.9rem"></i>
+                <i class="${item.completed ? 'fas fa-check-circle' : 'far fa-circle'} item-status ${item.completed ? 'is-done' : 'is-pending'}"></i>
             </li>`).join('');
     }
 
@@ -348,12 +354,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const items = siteData.explores || [];
         if (!items.length) { list.innerHTML = emptyState('fa-map-marked-alt','暂无探索地点'); return; }
         list.innerHTML = items.map(item => `
-            <li><span class="item-title">${escape(item.title)}</span><i class="fas fa-map-pin" style="color:var(--primary-light);font-size:0.85rem"></i></li>`).join('');
+            <li><span class="item-title">${escape(item.title)}</span><i class="fas fa-map-pin item-pin"></i></li>`).join('');
     }
 
     function renderPhotos() {
         const grid = $('photos-grid');
-        if (!photos.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-images"></i><p>暂无照片</p></div>'; return; }
+        if (!photos.length) { grid.innerHTML = '<div class="empty-state"><i class="fas fa-images"></i><p>还没有照片，去后台添加吧</p></div>'; return; }
         const isValidUrl = url => {
             if (!url) return false;
             try {
@@ -363,17 +369,20 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         const safeUrl = url => isValidUrl(url) ? url : '';
         grid.innerHTML = photos.map((photo, i) => `
-            <div class="photo-card" data-index="${i}" onclick="openLightbox(${i})" style="animation-delay:${i*0.05}s">
-                <img src="${safeUrl(photo.url)}" alt="${escape(photo.caption || '')}" loading="lazy" onerror="handleImageError(this,'${escape(safeUrl(photo.url))}')" data-url="${escape(safeUrl(photo.url))}">
+            <div class="photo-card" data-index="${i}" data-action="open-lightbox" role="button" tabindex="0" aria-label="查看照片${photo.caption ? '：' + escape(photo.caption) : ''}">
+                <img src="${escape(safeUrl(photo.url))}" alt="${escape(photo.caption || '')}" loading="lazy" data-url="${escape(safeUrl(photo.url))}">
                 <div class="photo-overlay"><p class="photo-caption">${escape(photo.caption || '')}</p></div>
-                <button class="photo-retry-btn" onclick="retryImage(this)" style="display:none" title="重试加载"><i class="fas fa-redo"></i></button>
+                <button class="photo-retry-btn" data-action="retry-image" title="重试加载" aria-label="重试加载图片"><i class="fas fa-redo"></i></button>
             </div>`).join('');
+        grid.querySelectorAll('img[data-url]').forEach(img => {
+            img.addEventListener('error', () => handleImageError(img), { once: true });
+        });
     }
 
-    window.handleImageError = function(img, url) {
-        img.style.display = 'none';
+    window.handleImageError = function(img) {
+        img.hidden = true;
         const retryBtn = img.closest('.photo-card')?.querySelector('.photo-retry-btn');
-        if (retryBtn) retryBtn.style.display = 'flex';
+        if (retryBtn) retryBtn.classList.add('is-visible');
     };
 
     window.retryImage = function(btn) {
@@ -381,12 +390,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const retryCount = parseInt(img.dataset.retryCount || '0') + 1;
         img.dataset.retryCount = retryCount;
         if (retryCount > 3) {
-            img.src = img.dataset.url + '?t=' + Date.now();
+            img.src = img.dataset.url;
         } else {
             img.src = img.dataset.url + '?retry=' + retryCount;
         }
-        img.style.display = 'block';
-        btn.style.display = 'none';
+        img.hidden = false;
+        btn.classList.remove('is-visible');
     };
 
     function renderMusic() {
@@ -510,11 +519,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 timeoutId = setTimeout(type, 50);
             } else if (idx === quote.length + 1) {
                 deleting = true;
-                cursor.style.display = 'none';
+                cursor.classList.add('is-hidden');
                 timeoutId = setTimeout(type, 5200);
             } else if (idx === -1) {
                 deleting = false;
-                cursor.style.display = 'inline-block';
+                cursor.classList.remove('is-hidden');
                 quote = LOVE_QUOTES[Math.floor(Math.random() * LOVE_QUOTES.length)];
                 idx = 0;
                 timeoutId = setTimeout(type, 500);
@@ -545,6 +554,21 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.key === 'Escape') closeLightbox();
             if (e.key === 'ArrowLeft') navigateLightbox(-1);
             if (e.key === 'ArrowRight') navigateLightbox(1);
+        });
+        document.addEventListener('click', e => {
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+            const action = target.dataset.action;
+            if (action === 'toggle-wishlist') {
+                e.preventDefault();
+                toggleWishlistCompletion(parseInt(target.dataset.id, 10));
+            } else if (action === 'open-lightbox') {
+                e.preventDefault();
+                openLightbox(parseInt(target.dataset.index, 10));
+            } else if (action === 'retry-image') {
+                e.preventDefault();
+                retryImage(target);
+            }
         });
     }
 
@@ -640,9 +664,19 @@ document.addEventListener('DOMContentLoaded', function() {
     function createParticle(x, y, iconClass) {
         const p = document.createElement('div');
         p.className = 'particle';
-        p.innerHTML = Math.random() > 0.3
-            ? `<i class="fas ${iconClass}" style="font-size:${2+Math.random()*2}rem;color:${COLORS[Math.floor(Math.random()*COLORS.length)]}"></i>`
-            : `<span style="font-size:${1.5+Math.random()*1.5}rem;color:${COLORS[Math.floor(Math.random()*COLORS.length)]}">${EMOJIS[Math.floor(Math.random()*EMOJIS.length)]}</span>`;
+        let child;
+        if (Math.random() > 0.3) {
+            child = document.createElement('i');
+            child.className = 'fas ' + iconClass;
+            child.style.fontSize = (2 + Math.random() * 2) + 'rem';
+            child.style.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+        } else {
+            child = document.createElement('span');
+            child.style.fontSize = (1.5 + Math.random() * 1.5) + 'rem';
+            child.style.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+            child.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+        }
+        p.appendChild(child);
         const angle = Math.random() * Math.PI * 2;
         const vel = 150 + Math.random() * 200;
         const endX = Math.cos(angle) * vel;
@@ -669,14 +703,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const backup = audio.dataset.backupUrl;
             if (backup && !useBackup) { useBackup = true; audio.src = backup; audio.load(); audio.play().catch(()=>{}); return; }
             audioErr.textContent = '音乐加载失败';
-            audioErr.style.display = 'block';
-            setTimeout(() => audioErr.style.display = 'none', 3000);
+            audioErr.classList.add('is-visible');
+            setTimeout(() => audioErr.classList.remove('is-visible'), 3000);
         });
 
         playBtn.addEventListener('click', function() {
             if (isPlaying) { audio.pause(); playIcon.classList.remove('fa-pause'); playIcon.classList.add('fa-play'); }
             else {
-                audio.play().catch(() => { audioErr.textContent = '播放失败'; audioErr.style.display = 'block'; setTimeout(() => audioErr.style.display = 'none', 3000); });
+                audio.play().catch(() => { audioErr.textContent = '播放失败'; audioErr.classList.add('is-visible'); setTimeout(() => audioErr.classList.remove('is-visible'), 3000); });
                 playIcon.classList.remove('fa-play'); playIcon.classList.add('fa-pause');
             }
             isPlaying = !isPlaying;

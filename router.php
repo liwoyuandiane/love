@@ -5,32 +5,40 @@
 
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 
+$isValidApiSegment = static fn(string $s): bool => $s !== '' && $s !== '.' && $s !== '..' && preg_match('/^[A-Za-z0-9_-]+$/', $s);
+
 // API routes with ID and action (e.g., /api/wishlists/123/toggle)
 if (preg_match('#^/api/([^/]+)/(\d+)/([^/]+)$#', $uri, $matches)) {
-    $apiFile = __DIR__ . '/api/' . $matches[1] . '-' . $matches[3] . '.php';
-    if (file_exists($apiFile)) {
-        $_GET['id'] = $matches[2];
-        require $apiFile;
-        return true;
+    if ($isValidApiSegment($matches[1]) && $isValidApiSegment($matches[3])) {
+        $apiFile = __DIR__ . '/api/' . $matches[1] . '-' . $matches[3] . '.php';
+        if (file_exists($apiFile)) {
+            $_GET['id'] = $matches[2];
+            require $apiFile;
+            return true;
+        }
     }
 }
 
 // API routes with ID (e.g., /api/photos/2) - DELETE, PUT
 if (preg_match('#^/api/([^/]+)/(\d+)$#', $uri, $matches)) {
-    $apiFile = __DIR__ . '/api/' . $matches[1] . '.php';
-    if (file_exists($apiFile)) {
-        $_GET['id'] = $matches[2];
-        require $apiFile;
-        return true;
+    if ($isValidApiSegment($matches[1])) {
+        $apiFile = __DIR__ . '/api/' . $matches[1] . '.php';
+        if (file_exists($apiFile)) {
+            $_GET['id'] = $matches[2];
+            require $apiFile;
+            return true;
+        }
     }
 }
 
 // API routes (e.g., /api/wishlists)
 if (preg_match('#^/api/([^/]+)$#', $uri, $matches)) {
-    $apiFile = __DIR__ . '/api/' . $matches[1] . '.php';
-    if (file_exists($apiFile)) {
-        require $apiFile;
-        return true;
+    if ($isValidApiSegment($matches[1])) {
+        $apiFile = __DIR__ . '/api/' . $matches[1] . '.php';
+        if (file_exists($apiFile)) {
+            require $apiFile;
+            return true;
+        }
     }
 }
 
@@ -40,9 +48,15 @@ if ($uri === '/install/' || $uri === '/install') {
     return true;
 }
 
-// Static files
-if ($uri !== '/' && file_exists(__DIR__ . $uri)) {
-    return false;
+// Static files (block path traversal; only serve files under project root)
+if ($uri !== '/' && strpos($uri, '..') === false) {
+    $staticPath = __DIR__ . $uri;
+    $realPath = realpath($staticPath);
+    $realRoot = realpath(__DIR__);
+    if ($realPath !== false && $realRoot !== false && is_file($realPath)
+        && strpos($realPath, $realRoot . DIRECTORY_SEPARATOR) === 0) {
+        return false;
+    }
 }
 
 // Main entry points

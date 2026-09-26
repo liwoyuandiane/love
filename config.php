@@ -8,8 +8,10 @@
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: strict-origin-when-cross-origin');
-header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data: https:; img-src 'self' data: https:; connect-src 'self'; media-src 'self' https://music.163.com https://*.music.126.net http://*.music.126.net;");
+if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+}
+header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data: https:; connect-src 'self'; media-src 'self' https://music.163.com https://*.music.126.net http://*.music.126.net;");
 
 // 加载环境变量（.env 路径由 env.php 统一解析：Docker 数据目录优先）
 require_once __DIR__ . '/env.php';
@@ -32,9 +34,9 @@ if (file_exists($envFile)) {
 }
 
 // 定义路径常量
-define('ROOT_PATH', dirname(__DIR__));
+define('ROOT_PATH', __DIR__);
 define('ASSETS_PATH', ROOT_PATH . '/assets');
-define('UPLOAD_PATH', ASSETS_PATH . '/images');
+define('UPLOAD_PATH', ASSETS_PATH . '/uploads');
 
 // 会话配置
 if (session_status() === PHP_SESSION_NONE) {

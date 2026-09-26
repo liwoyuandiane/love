@@ -64,13 +64,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>后台管理 - 情侣网站</title>
+    <title>后台管理 · 我们的专属空间</title>
     <link rel="stylesheet" href="<?php echo asset('assets/css/fonts.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset('assets/css/fontawesome.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset('assets/css/admin.css'); ?>">
+    <meta name="csrf-token" content="<?php echo htmlspecialchars(CSRF::generate(), ENT_QUOTES, 'UTF-8'); ?>">
+    <meta name="app-version" content="<?php echo htmlspecialchars(APP_VERSION, ENT_QUOTES, 'UTF-8'); ?>">
+    <meta name="github-repo" content="liwoyuandiane/love">
+    <meta name="user-role" content="<?php echo htmlspecialchars($currentUserRole ?? 'user', ENT_QUOTES, 'UTF-8'); ?>">
+    <meta name="user-id" content="<?php echo intval($currentUserId); ?>">
+    <meta name="is-admin" content="<?php echo (($currentUserRole ?? 'user') === 'admin') ? '1' : '0'; ?>">
+    <script src="<?php echo asset('assets/js/boot.js'); ?>"></script>
 </head>
 <body>
-    <div class="login-overlay" id="loginOverlay" <?php if ($success) echo 'style="display:none"'; ?>>
+    <div class="login-overlay<?php if ($success) echo ' is-hidden'; ?>" id="loginOverlay">
         <div class="login-box">
             <div class="icon"><i class="fas fa-heart"></i></div>
             <h2>后台管理登录</h2>
@@ -78,23 +85,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             <form id="loginForm">
                 <input type="text" class="login-input" id="usernameInput" placeholder="用户名" maxlength="50" autocomplete="username" required>
                 <input type="password" class="login-input" id="passwordInput" placeholder="密码" maxlength="72" autocomplete="current-password" required>
-                <button type="submit" class="login-btn" id="loginBtn">登 录</button>
+                <button type="submit" class="login-btn" id="loginBtn"><span class="login-btn-label">登录</span></button>
             </form>
             <p class="login-error" id="loginError">用户名或密码错误</p>
         </div>
     </div>
 
-    <div class="loading-overlay" id="loadingOverlay" style="display:none">
+    <div class="loading-overlay is-hidden" id="loadingOverlay">
         <div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i></div>
         <p>正在加载数据...</p>
     </div>
 
-    <div class="admin-container <?php if ($success) echo 'active'; ?>" id="adminContainer" <?php if (!$success) echo 'style="display:none"'; ?>>
+    <div class="admin-container<?php if ($success) echo ' active'; ?>" id="adminContainer">
         <div class="admin-header">
             <h1><i class="fas fa-cog"></i> 管理面板</h1>
             <div class="header-actions">
                 <a href="/" class="back-link"><i class="fas fa-home"></i> <span>返回首页</span></a>
-                <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> <span>退出</span></button>
+                <button class="logout-btn" type="button" data-action="logout"><i class="fas fa-sign-out-alt"></i> <span>退出</span></button>
             </div>
         </div>
 
@@ -147,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <div class="form-group">
                         <label class="required-field">日期</label>
                         <input type="date" class="form-input" id="anniversaryDate" required>
-                        <small style="color: var(--text-muted); font-size: 0.8rem;">必填项，请选择一个日期</small>
+                        <small class="form-hint">必填项，请选择一个日期</small>
                     </div>
                     <div class="form-group">
                         <label>类型</label>
@@ -161,9 +168,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <div class="form-group">
                         <label>提前提醒天数</label>
                         <input type="number" class="form-input" id="anniversaryReminder" value="0" min="0" max="365" placeholder="0表示不提醒">
-                        <small style="color: var(--text-muted); font-size: 0.8rem;">设置提前几天发送提醒</small>
+                        <small class="form-hint">设置提前几天发送提醒</small>
                     </div>
-                    <div class="form-group" style="grid-column: 1 / -1;">
+                    <div class="form-group span-full">
                         <label>描述（可选）</label>
                         <input type="text" class="form-input" id="anniversaryDesc" maxlength="500" placeholder="描述...">
                     </div>
@@ -193,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <div class="form-group">
                         <label>日期</label>
                         <input type="date" class="form-input" id="wishlistDate">
-                        <small style="color: var(--text-muted); font-size: 0.8rem;">可选，填写愿望实现的日期</small>
+                        <small class="form-hint">可选，填写愿望实现的日期</small>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> 添加愿望</button>
@@ -236,7 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 <h2><i class="fas fa-images"></i> 记忆墙管理</h2>
             </div>
             
-            <h3 style="margin: 20px 0 15px; color: var(--primary-light); font-size: 1rem;"><i class="fas fa-link"></i> 通过URL添加图片（推荐）</h3>
+            <h3 class="form-subheading"><i class="fas fa-link"></i> 通过URL添加图片（推荐）</h3>
             <form id="photoUrlForm">
                 <div class="form-grid">
                     <div class="form-group">
@@ -251,7 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> 添加链接</button>
             </form>
 
-            <h3 style="margin: 30px 0 15px; color: var(--primary-light); font-size: 1rem;"><i class="fas fa-upload"></i> 上传本地图片</h3>
+            <h3 class="form-subheading"><i class="fas fa-upload"></i> 上传本地图片</h3>
             <form id="photoUploadForm">
                 <div class="form-group">
                     <div class="file-upload" id="fileUploadArea">
@@ -259,17 +266,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         <i class="fas fa-cloud-upload-alt" id="uploadIcon"></i>
                         <p id="uploadText">点击或拖拽图片到此处上传</p>
                         <p class="hint" id="uploadHint">支持 jpg, png, gif, webp 格式，最大 10MB</p>
-                        <p id="fileNameDisplay" style="display:none; margin-top:8px; color: var(--success); word-break:break-all;"></p>
+                        <p id="fileNameDisplay" class="file-name-display"></p>
                     </div>
                 </div>
-                <div class="form-group" style="margin-top: 15px;">
+                <div class="form-group with-gap">
                     <label>照片说明（可选）</label>
                     <input type="text" class="form-input" id="photoCaption" maxlength="200" placeholder="照片描述...">
                 </div>
                 <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> 上传图片</button>
             </form>
 
-            <h3 style="margin: 30px 0 15px; color: var(--primary-light); font-size: 1rem;"><i class="fas fa-th"></i> 已上传的照片</h3>
+            <h3 class="form-subheading"><i class="fas fa-th"></i> 已上传的照片</h3>
             <div class="photo-grid" id="photoGrid"></div>
         </div>
 
@@ -285,10 +292,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         <label><input type="radio" name="sourceType" value="url" id="sourceUrl" checked> URL链接</label>
                     </div>
                 </div>
-                <div class="form-group" id="localPathGroup" style="display: none;">
+                <div class="form-group is-hidden" id="localPathGroup">
                     <label>本地文件路径</label>
                     <input type="text" class="form-input" id="localPath" placeholder="/uploads/love-song.mp3">
-                    <small style="color: var(--text-muted); margin-top: 5px; display: block;">请将音乐文件放入 public/uploads/ 目录</small>
+                    <small class="form-hint">请将音乐文件放入 public/uploads/ 目录</small>
                 </div>
                 <div class="form-group" id="urlPathGroup">
                     <label>音乐URL</label>
@@ -297,7 +304,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 <div class="form-group">
                     <label>备用音乐URL（可选）</label>
                     <input type="url" class="form-input" id="musicBackupUrl" placeholder="当主音乐加载失败时自动切换">
-                    <small style="color: var(--text-muted); margin-top: 5px; display: block;">当主音乐链接失效时，自动切换到备用链接</small>
+                    <small class="form-hint">当主音乐链接失效时，自动切换到备用链接</small>
                 </div>
                 <div class="form-grid">
                     <div class="form-group">
@@ -309,7 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         <input type="text" class="form-input" id="musicArtist" maxlength="100" placeholder="歌手名">
                     </div>
                 </div>
-                <div class="music-preview" id="musicPreview" style="display: none;">
+                <div class="music-preview is-hidden" id="musicPreview">
                     <p>音乐预览：</p>
                     <audio id="previewAudio" controls></audio>
                 </div>
@@ -321,12 +328,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             <div class="section-header">
                 <h2><i class="fas fa-download"></i> 数据备份导出导入</h2>
             </div>
-            <div style="background: var(--card-bg); border-radius: 16px; padding: 25px; margin-bottom: 20px; border: 1px solid var(--card-border);">
-                <p style="color: var(--text-secondary); margin-bottom: 15px;">导出所有网站数据为JSON文件，包含情侣信息、纪念日、愿望清单、探索地点和音乐设置。</p>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-primary" onclick="exportData()"><i class="fas fa-download"></i> 导出数据</button>
-                    <button type="button" class="btn btn-success" onclick="document.getElementById('importFile').click()"><i class="fas fa-upload"></i> 导入数据</button>
-                    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this.files[0])">
+            <div class="backup-card">
+                <p>导出所有网站数据为JSON文件，包含情侣信息、纪念日、愿望清单、探索地点和音乐设置。</p>
+                <div class="backup-actions">
+                    <button type="button" class="btn btn-primary" data-action="export"><i class="fas fa-download"></i> 导出数据</button>
+                    <button type="button" class="btn btn-success" data-action="import-trigger"><i class="fas fa-upload"></i> 导入数据</button>
+                    <input type="file" id="importFile" accept=".json" class="is-hidden" data-action="import-file">
                 </div>
             </div>
         </div>
@@ -337,12 +344,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             </div>
             <form id="settingsForm">
                 <div class="form-grid">
-                    <div class="form-group" style="grid-column: 1 / -1;">
+                    <div class="form-group span-full">
                         <label>网站名称</label>
                         <input type="text" class="form-input" id="siteName" maxlength="200" placeholder="显示在浏览器标签页">
-                        <small style="color: var(--text-muted); font-size: 0.8rem;">显示在浏览器标签页和首页标题</small>
+                        <small class="form-hint">显示在浏览器标签页和首页标题</small>
                     </div>
-                    <div class="form-group" style="grid-column: 1 / -1;">
+                    <div class="form-group span-full">
                         <label for="timezone">时区设置</label>
                         <select class="form-input" id="timezone">
                             <option value="Asia/Shanghai">北京时间 (UTC+8)</option>
@@ -353,21 +360,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             <option value="America/Los_Angeles">洛杉矶时间 (UTC-8)</option>
                             <option value="Australia/Sydney">悉尼时间 (UTC+10)</option>
                         </select>
-                        <small style="color: var(--text-muted); font-size: 0.8rem;">选择你所在的时区，计时器将按照此时区显示时间</small>
+                        <small class="form-hint">选择你所在的时区，计时器将按照此时区显示时间</small>
                     </div>
-                    <div class="form-group" style="grid-column: 1 / -1;">
+                    <div class="form-group span-full">
                         <label>ICP备案号</label>
                         <input type="text" class="form-input" id="icpCode" maxlength="100" placeholder="如：粤ICP备XXXXXXXX号-X">
-                        <small style="color: var(--text-muted); font-size: 0.8rem;">中国大陆网站必须填写。格式示例：粤ICP备12345678号</small>
+                        <small class="form-hint">中国大陆网站必须填写。格式示例：粤ICP备12345678号</small>
                     </div>
-                    <div class="form-group" style="grid-column: 1 / -1;">
+                    <div class="form-group span-full">
                         <label>公安联网备案号（可选）</label>
                         <input type="text" class="form-input" id="policeRecordCode" maxlength="100" placeholder="如：粤公网安备XXXXXXXXXXXXXXXX号">
-                        <small style="color: var(--text-muted); font-size: 0.8rem;">如果网站需要公安联网备案，请填写</small>
+                        <small class="form-hint">如果网站需要公安联网备案，请填写</small>
                     </div>
                 </div>
-                <div style="background: rgba(255,107,157,0.15); border-radius: 12px; padding: 15px; margin-bottom: 20px; border: 1px solid rgba(255,107,157,0.3);">
-                    <p style="color: var(--text-secondary); font-size: 0.85rem;"><i class="fas fa-info-circle" style="color: var(--primary);"></i> 备案信息将显示在网站底部。根据中国大陆法规，经营性和非经营性网站都需进行ICP备案。</p>
+                <div class="info-banner">
+                    <p><i class="fas fa-info-circle info-icon"></i> 备案信息将显示在网站底部。根据中国大陆法规，经营性和非经营性网站都需进行ICP备案。</p>
                 </div>
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存设置</button>
             </form>
@@ -377,7 +384,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             <div class="section-header">
                 <h2><i class="fas fa-user-shield"></i> 账号管理</h2>
             </div>
-            <div class="current-user-info" style="margin-bottom: 20px; padding: 12px; background: rgba(255,107,157,0.2); border-radius: 8px;">
+            <div class="current-user-info">
                 <i class="fas fa-user-circle"></i> 当前登录账号: <strong><?php echo htmlspecialchars($currentUsername, ENT_QUOTES, 'UTF-8'); ?></strong>
             </div>
             <form id="adminUserForm">
@@ -400,13 +407,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 <h2><i class="fas fa-file-alt"></i> 审计日志</h2>
             </div>
             <div class="log-filters">
-                <input type="text" class="form-input" id="logSearch" placeholder="搜索日志内容..." style="max-width: 300px;">
-                <select class="form-input" id="logLevel" style="max-width: 150px;">
+                <input type="text" class="form-input" id="logSearch" placeholder="搜索日志内容...">
+                <select class="form-input" id="logLevel">
                     <option value="">全部级别</option>
                     <option value="AUDIT">仅 AUDIT</option>
                 </select>
-                <button type="button" class="btn btn-secondary" onclick="loadAuditLogs()"><i class="fas fa-search"></i> 搜索</button>
-                <button type="button" class="btn btn-secondary" onclick="refreshAuditLogs()"><i class="fas fa-redo"></i> 刷新</button>
+                <button type="button" class="btn btn-secondary" data-action="log-search"><i class="fas fa-search"></i> 搜索</button>
+                <button type="button" class="btn btn-secondary" data-action="log-refresh"><i class="fas fa-redo"></i> 刷新</button>
             </div>
             <div class="log-container">
                 <table class="data-table log-table">
@@ -429,7 +436,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="editModalTitle"><i class="fas fa-edit"></i> 编辑</h3>
-                <button class="close-btn" onclick="closeEditModal()">&times;</button>
+                <button class="close-btn" type="button" data-action="close-edit">&times;</button>
             </div>
             <form id="editForm"></form>
         </div>
@@ -439,7 +446,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="photoEditModalTitle"><i class="fas fa-image"></i> 编辑照片</h3>
-                <button class="close-btn" onclick="closePhotoEditModal()">&times;</button>
+                <button class="close-btn" type="button" data-action="close-photo-edit">&times;</button>
             </div>
             <form id="photoEditForm">
                 <div class="form-group">
@@ -450,7 +457,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <label>图片链接</label>
                     <input type="url" class="form-input" id="photoEditUrl" placeholder="https://example.com/image.jpg">
                 </div>
-                <div class="form-group" id="photoLocalPathGroup" style="display:none">
+                <div class="form-group is-hidden" id="photoLocalPathGroup">
                     <label>本地路径</label>
                     <input type="text" class="form-input" id="photoEditLocalPath" placeholder="/assets/uploads/xxx.jpg" readonly>
                 </div>
@@ -459,7 +466,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <div class="photo-edit-preview" id="photoEditPreview"></div>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closePhotoEditModal()">取消</button>
+                    <button type="button" class="btn btn-secondary" data-action="close-photo-edit">取消</button>
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存</button>
                 </div>
             </form>
@@ -472,21 +479,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         <div class="admin-footer-content">
             <span class="admin-footer-copy"><i class="fas fa-heart"></i> <span id="footerSiteName">情侣纪念网站</span> · © <?php echo date('Y'); ?></span>
             <span class="admin-footer-sep">·</span>
-            <button type="button" class="admin-footer-version" id="versionBadge" title="当前版本，点击检查更新" onclick="checkUpdate(true)">
+            <button type="button" class="admin-footer-version" id="versionBadge" title="当前版本，点击检查更新" data-action="check-update">
                 <i class="fas fa-tag"></i> <span>v<?php echo APP_VERSION; ?></span>
-                <span class="version-dot" id="versionDot" style="display:none" title="发现新版本"></span>
+                <span class="version-dot is-hidden" id="versionDot" title="发现新版本"></span>
             </button>
         </div>
     </footer>
 
-    <script>
-        window.CSRF_TOKEN = <?php echo json_encode(CSRF::generate()); ?>;
-        window.APP_VERSION = <?php echo json_encode(APP_VERSION); ?>;
-        window.GITHUB_REPO = 'liwoyuandiane/love';
-        window.CURRENT_USER_ROLE = <?php echo json_encode($currentUserRole ?? 'user'); ?>;
-        window.CURRENT_USER_ID = <?php echo intval($currentUserId); ?>;
-        window.IS_ADMIN = <?php echo ($currentUserRole ?? 'user') === 'admin' ? 'true' : 'false'; ?>;
-    </script>
     <script src="<?php echo asset('assets/js/utils.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/admin.js'); ?>"></script>
 </body>

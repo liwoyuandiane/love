@@ -120,6 +120,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $dsn = "mysql:host=$dbHost;port=$dbPort;charset=utf8mb4";
             $pdo = new PDO($dsn, $dbUser, $dbPass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 
+            // 已有表数据时必须显式 confirm_drop=1，防止绕过前端确认直接 DROP
+            $hasTables = false;
+            try {
+                $stmt = $pdo->query("SHOW TABLES");
+                $hasTables = $stmt !== false && $stmt->fetch() !== false;
+            } catch (PDOException $e) {
+                $hasTables = false;
+            }
+            if ($hasTables && (($_POST['confirm_drop'] ?? '') !== '1')) {
+                echo json_encode(['success' => false, 'message' => '目标数据库已有数据，需勾选确认清空（confirm_drop=1）']);
+                exit;
+            }
+
             $pdo->exec("DROP DATABASE IF EXISTS `$dbName`");
             $pdo->exec("CREATE DATABASE `$dbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
             $pdo->exec("USE `$dbName`");
@@ -244,109 +257,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <title>安装向导 - 情侣纪念网站</title>
     <link rel="stylesheet" href="<?php echo asset('assets/css/fonts.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset('assets/css/fontawesome.css'); ?>">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Quicksand', 'Noto Sans SC', sans-serif;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #1a1a2e 0%, #2d1f3d 50%, #2a1a3a 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .install-box {
-            background: rgba(255, 255, 255, 0.06);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px;
-            padding: 40px;
-            max-width: 480px;
-            width: 100%;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-        }
-        .icon {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #ff6b9d, #c44569);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 25px;
-            font-size: 2rem;
-            color: white;
-        }
-        h1 { color: white; text-align: center; margin-bottom: 8px; font-size: 1.8rem; }
-        p.subtitle { color: rgba(255,255,255,0.5); text-align: center; margin-bottom: 30px; font-size: 0.95rem; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; color: rgba(255,255,255,0.8); margin-bottom: 8px; font-size: 0.9rem; }
-        input {
-            width: 100%;
-            padding: 14px 16px;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 12px;
-            color: white;
-            font-size: 1rem;
-            font-family: inherit;
-            transition: all 0.3s;
-        }
-        input:focus { outline: none; border-color: #ff6b9d; background: rgba(255,255,255,0.12); }
-        input::placeholder { color: rgba(255,255,255,0.35); }
-        .btn {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #ff6b9d, #c44569);
-            border: none;
-            border-radius: 12px;
-            color: white;
-            font-size: 1.05rem;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 12px 35px rgba(255, 107, 157, 0.35); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .btn-outline {
-            background: transparent;
-            border: 2px solid rgba(255,255,255,0.2);
-            margin-bottom: 15px;
-        }
-        .btn-outline:hover { background: rgba(255,255,255,0.08); }
-        .status { margin-top: 15px; padding: 12px; border-radius: 10px; text-align: center; font-size: 0.9rem; display: none; }
-        .status.success { display: block; background: rgba(46, 204, 113, 0.15); border: 1px solid rgba(46, 204, 113, 0.3); color: #2ecc71; }
-        .status.error { display: block; background: rgba(255, 71, 87, 0.15); border: 1px solid rgba(255, 71, 87, 0.3); color: #ff6b6b; }
-        .status.warning { display: block; background: rgba(241, 196, 15, 0.15); border: 1px solid rgba(241, 196, 15, 0.3); color: #f1c40f; }
-        .admin-section { margin-top: 25px; padding-top: 25px; border-top: 1px solid rgba(255,255,255,0.1); display: none; }
-        .admin-section h3 { color: rgba(255,255,255,0.9); margin-bottom: 15px; font-size: 1rem; }
-        .success-page { text-align: center; display: none; }
-        .success-page .icon { background: linear-gradient(135deg, #2ecc71, #27ae60); }
-        .success-page h2 { color: white; margin-bottom: 15px; }
-        .success-page p { color: rgba(255,255,255,0.7); margin-bottom: 25px; }
-        .success-links { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
-        .success-links a { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; background: linear-gradient(135deg, #ff6b9d, #c44569); color: white; text-decoration: none; border-radius: 14px; font-weight: 600; transition: all 0.3s; }
-        .success-links a:hover { transform: translateY(-3px); box-shadow: 0 12px 35px rgba(255, 107, 157, 0.4); }
-        .success-links .btn-home { background: linear-gradient(135deg, #667eea, #764ba2); }
-        .success-links .btn-home:hover { box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4); }
-        .warning-box {
-            background: rgba(241, 196, 15, 0.1);
-            border: 1px solid rgba(241, 196, 15, 0.3);
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 15px;
-            color: #f1c40f;
-            font-size: 0.85rem;
-            display: none;
-        }
-        .warning-box.show { display: block; }
-        .warning-box i { margin-right: 8px; }
-        @media (max-width: 480px) { .install-box { padding: 30px 20px; } }
-    </style>
+    <link rel="stylesheet" href="<?php echo asset('assets/css/install.css'); ?>">
 </head>
 <body>
-    <form class="install-box" id="dbForm" onsubmit="return false;">
+    <form class="install-box" id="dbForm">
         <div class="icon"><i class="fas fa-heart"></i></div>
         <h1>安装向导</h1>
         <p class="subtitle">情侣纪念网站</p>
@@ -382,7 +296,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             <span id="warningText"></span>
         </div>
 
-        <div class="admin-section" id="adminSection">
+        <div class="admin-section is-hidden" id="adminSection">
             <h3><i class="fas fa-user-shield"></i> 管理员账号</h3>
             <div class="form-group">
                 <label>用户名 *</label>
@@ -396,13 +310,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             <button type="button" class="btn" id="installBtn">
                 <i class="fas fa-rocket"></i> 开始安装
             </button>
-            <button type="button" class="btn btn-outline" id="backBtn" style="margin-top:10px;">
+            <button type="button" class="btn btn-outline" id="backBtn">
                 <i class="fas fa-arrow-left"></i> 返回
             </button>
         </div>
     </form>
 
-    <div class="install-box success-page" id="successPage" style="display:none;">
+    <div class="install-box success-page is-hidden" id="successPage">
         <div class="icon"><i class="fas fa-check"></i></div>
         <h2>安装成功</h2>
         <p>恭喜！您的情侣纪念网站已安装完成。</p>
@@ -416,126 +330,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         </div>
     </div>
 
-    <script>
-    const testBtn = document.getElementById('testBtn');
-    const installBtn = document.getElementById('installBtn');
-    const backBtn = document.getElementById('backBtn');
-    const testStatus = document.getElementById('testStatus');
-    const adminSection = document.getElementById('adminSection');
-    const warningBox = document.getElementById('warningBox');
-    const warningText = document.getElementById('warningText');
-    const successPage = document.getElementById('successPage');
-    const dbForm = document.getElementById('dbForm');
-    let dbExists = false;
-    let connectionData = {};
-
-    testBtn.addEventListener('click', async () => {
-        const dbHost = document.getElementById('dbHost').value;
-        const dbPort = document.getElementById('dbPort').value;
-        const dbName = document.getElementById('dbName').value;
-        const dbUser = document.getElementById('dbUser').value;
-        const dbPass = document.getElementById('dbPass').value;
-
-        if (!dbHost || !dbName || !dbUser) {
-            testStatus.className = 'status error';
-            testStatus.textContent = '请填写完整的数据库信息';
-            return;
-        }
-
-        testBtn.disabled = true;
-        testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 测试中...';
-
-        try {
-            const fd = new FormData();
-            fd.append('action', 'test_connection');
-            fd.append('db_host', dbHost);
-            fd.append('db_port', dbPort);
-            fd.append('db_name', dbName);
-            fd.append('db_user', dbUser);
-            fd.append('db_pass', dbPass);
-            const res = await fetch('/install/', { method: 'POST', body: fd });
-            const result = await res.json();
-
-            if (result.success) {
-                testStatus.className = 'status success';
-                testStatus.innerHTML = '<i class="fas fa-check-circle"></i> ' + result.message;
-                connectionData = { dbHost, dbPort, dbName, dbUser, dbPass };
-                dbExists = result.db_exists || false;
-
-                if (dbExists) {
-                    warningBox.classList.add('show');
-                    warningText.textContent = '警告：该数据库已存在！继续安装将删除所有现有数据！请提前做好备份！';
-                } else {
-                    warningBox.classList.remove('show');
-                }
-
-                adminSection.style.display = 'block';
-            } else {
-                testStatus.className = 'status error';
-                testStatus.innerHTML = '<i class="fas fa-times-circle"></i> ' + result.message;
-                adminSection.style.display = 'none';
-                warningBox.classList.remove('show');
-            }
-        } catch (e) {
-            testStatus.className = 'status error';
-            testStatus.textContent = '连接失败，请检查网络';
-            adminSection.style.display = 'none';
-        }
-
-        testBtn.disabled = false;
-        testBtn.innerHTML = '<i class="fas fa-plug"></i> 测试连接';
-    });
-
-    backBtn.addEventListener('click', () => {
-        adminSection.style.display = 'none';
-        warningBox.classList.remove('show');
-        testStatus.className = 'status';
-        testStatus.textContent = '';
-    });
-
-    installBtn.addEventListener('click', async () => {
-        const adminUser = document.getElementById('adminUser').value;
-        const adminPass = document.getElementById('adminPass').value;
-
-        if (!adminUser || !adminPass) { alert('请填写管理员信息'); return; }
-        if (adminPass.length < 8 || adminPass.length > 72) { alert('密码长度需为 8-72 位'); return; }
-
-        if (dbExists) {
-            if (!confirm('警告：即将清空数据库所有数据！此操作不可恢复！\n\n确定要继续吗？')) {
-                return;
-            }
-        }
-
-        installBtn.disabled = true;
-        installBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 安装中...';
-
-        try {
-            const fd = new FormData();
-            fd.append('action', 'install');
-            fd.append('db_host', connectionData.dbHost);
-            fd.append('db_port', connectionData.dbPort);
-            fd.append('db_name', connectionData.dbName);
-            fd.append('db_user', connectionData.dbUser);
-            fd.append('db_pass', connectionData.dbPass);
-            fd.append('admin_user', adminUser);
-            fd.append('admin_pass', adminPass);
-            const res = await fetch('/install/', { method: 'POST', body: fd });
-            const result = await res.json();
-
-            if (result.success) {
-                dbForm.style.display = 'none';
-                successPage.style.display = 'block';
-            } else {
-                alert(result.message);
-                installBtn.disabled = false;
-                installBtn.innerHTML = '<i class="fas fa-rocket"></i> 开始安装';
-            }
-        } catch (e) {
-            alert('安装失败，请重试');
-            installBtn.disabled = false;
-            installBtn.innerHTML = '<i class="fas fa-rocket"></i> 开始安装';
-        }
-    });
-    </script>
+    <script src="<?php echo asset('assets/js/install.js'); ?>"></script>
 </body>
 </html>
