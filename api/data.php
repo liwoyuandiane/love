@@ -48,11 +48,22 @@ try {
     $stmt = $db->query("SELECT source_type, source_url, backup_url, title, artist FROM music WHERE id = 1");
     $music = $stmt->fetch();
 
-    $stmt = $db->query("SELECT icp_code, police_record_code, site_name, timezone FROM site_settings WHERE id = 1");
+    $breakupPeriods = [];
+    if (!empty($db->query("SHOW TABLES LIKE 'breakup_periods'")->fetchAll())) {
+        $stmt = $db->query("SELECT id, start_date, end_date, note FROM breakup_periods ORDER BY start_date ASC");
+        $breakupPeriods = $stmt->fetchAll();
+    }
+
+    $hasBreakupSetting = !empty($db->query("SHOW COLUMNS FROM site_settings LIKE 'show_breakup_days'")->fetchAll());
+    $settingsSelect = $hasBreakupSetting
+        ? "SELECT icp_code, police_record_code, site_name, timezone, show_breakup_days FROM site_settings WHERE id = 1"
+        : "SELECT icp_code, police_record_code, site_name, timezone FROM site_settings WHERE id = 1";
+    $stmt = $db->query($settingsSelect);
     $settings = $stmt->fetch();
     if (!$settings) {
         $settings = ['icp_code' => '', 'police_record_code' => '', 'site_name' => '', 'timezone' => 'Asia/Shanghai'];
     }
+    $settings['show_breakup_days'] = intval($settings['show_breakup_days'] ?? 0);
 
     $data = [
         'coupleInfo' => $coupleInfo,
@@ -61,6 +72,7 @@ try {
         'explores' => $explores,
         'photos' => $photos,
         'music' => $music,
+        'breakupPeriods' => $breakupPeriods,
         'settings' => $settings
     ];
 

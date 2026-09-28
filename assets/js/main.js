@@ -114,6 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const newHash = JSON.stringify(newData);
                 if (newHash !== lastDataHash) {
                     const prevAnn = siteData?.coupleInfo?.anniversary || null;
+                    const prevPeriods = JSON.stringify(siteData?.breakupPeriods || []);
                     siteData = newData;
                     photos = newData.photos || [];
                     lastDataHash = newHash;
@@ -124,7 +125,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     renderPhotos();
                     renderMusic();
                     const curAnn = newData.coupleInfo?.anniversary || null;
-                    if (prevAnn !== null && curAnn !== prevAnn) {
+                    const curPeriods = JSON.stringify(newData.breakupPeriods || []);
+                    if ((prevAnn !== null && curAnn !== prevAnn) || curPeriods !== prevPeriods) {
                         clearInterval(timerInterval);
                         startTimer();
                     }
@@ -184,6 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const newHash = JSON.stringify(newData);
                 if (newHash !== lastDataHash) {
                     const prevAnn = siteData?.coupleInfo?.anniversary || null;
+                    const prevPeriods = JSON.stringify(siteData?.breakupPeriods || []);
                     siteData = newData;
                     photos = newData.photos || [];
                     lastDataHash = newHash;
@@ -195,7 +198,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         renderPhotos();
                         renderMusic();
                         const curAnn = newData.coupleInfo?.anniversary || null;
-                        if (prevAnn !== null && curAnn !== prevAnn) {
+                        const curPeriods = JSON.stringify(newData.breakupPeriods || []);
+                        if ((prevAnn !== null && curAnn !== prevAnn) || curPeriods !== prevPeriods) {
                             clearInterval(timerInterval);
                             startTimer();
                         }
@@ -231,10 +235,8 @@ document.addEventListener('DOMContentLoaded', function() {
         fill('name1', name1); fill('name2', name2);
         fill('footer-name1', name1); fill('footer-name2', name2);
         if (anniversary) {
-            const annDate = new Date(anniversary);
-            if (isNaN(annDate.getTime())) return;
-            const days = Math.ceil(Math.abs(Date.now() - annDate) / 86400000);
-            renderMilestoneBadge(days);
+            const elapsed = TogetherTime.computeElapsed(anniversary, siteData.breakupPeriods || [], Date.now());
+            renderMilestoneBadge(Math.ceil(elapsed.elapsedMs / TogetherTime.MS_PER_DAY));
         }
     }
 
@@ -418,11 +420,22 @@ document.addEventListener('DOMContentLoaded', function() {
         $('music-artist').textContent = artist || '';
     }
 
+    function renderDeductionNote(elapsed) {
+        const noteEl = $('deduction-note');
+        if (!noteEl) return;
+        const enabled = siteData?.settings?.show_breakup_days === 1;
+        const excludedDays = Math.floor(elapsed.excludedMs / TogetherTime.MS_PER_DAY);
+        if (enabled && excludedDays >= 1) {
+            noteEl.textContent = `已扣除分手期 ${excludedDays} 天`;
+            noteEl.classList.add('is-visible');
+        } else {
+            noteEl.textContent = '';
+            noteEl.classList.remove('is-visible');
+        }
+    }
+
     function startTimer() {
         if (!siteData?.coupleInfo) return;
-
-        const [y, mo, d] = siteData.coupleInfo.anniversary.split('T')[0].split('-').map(Number);
-        const startDate = Date.UTC(y, mo - 1, d, 0, 0, 0);
 
         const MS_PER_MINUTE = 60;
         const MS_PER_HOUR = MS_PER_MINUTE * 60;
@@ -434,8 +447,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
         function update() {
             const now = Date.now();
-            totalSeconds = Math.floor((now - startDate) / 1000);
+            const elapsed = TogetherTime.computeElapsed(
+                siteData.coupleInfo.anniversary,
+                siteData.breakupPeriods || [],
+                now
+            );
+            totalSeconds = elapsed.seconds;
             if (totalSeconds < 0) totalSeconds = 0;
+
+            renderDeductionNote(elapsed);
 
             let remaining = totalSeconds;
 

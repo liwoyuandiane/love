@@ -402,7 +402,35 @@
         .section h2 i {
             color: var(--primary);
         }
-        
+
+        /* Breakup Periods Sub-block */
+        .breakup-block {
+            margin-top: 35px;
+            padding-top: 5px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .breakup-block .section-header {
+            margin-top: 20px;
+        }
+
+        /* Settings Checkbox */
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .form-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
         /* Form Grid */
         .form-grid {
             display: grid;

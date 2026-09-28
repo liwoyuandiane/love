@@ -8,6 +8,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/cache.php';
+require_once __DIR__ . '/../includes/breakup.php';
 
 if (!isLoggedIn()) {
     http_response_code(401);
@@ -50,7 +51,25 @@ if (!isset($importData['data']) || !isset($importData['version'])) {
 try {
     $db = getDB();
     $data = $importData['data'];
-    
+
+    // 导入前整体校验分手区间（事务外，校验失败直接 400 且不落库）
+    $importPeriods = null;
+    if (isset($data['breakupPeriods']) && is_array($data['breakupPeriods'])) {
+        $importPeriods = array_values(array_filter($data['breakupPeriods'], 'is_array'));
+        $anniversary = '';
+        if (is_array($data['coupleInfo'] ?? null) && !empty($data['coupleInfo']['anniversary'])) {
+            $anniversary = (string)$data['coupleInfo']['anniversary'];
+        } else {
+            $row = $db->query("SELECT anniversary FROM couple_info WHERE id = 1")->fetch();
+            $anniversary = $row ? (string)$row['anniversary'] : '';
+        }
+        $periodError = validateBreakupSet($importPeriods, $anniversary);
+        if ($periodError !== null) {
+            http_response_code(400);
+            jsonResponse(false, null, $periodError, 'VALIDATION_ERROR');
+        }
+    }
+
     $db->beginTransaction();
     
     if (!empty($data['coupleInfo'])) {
@@ -147,13 +166,32 @@ try {
 
     if (!empty($data['siteSettings'])) {
         $s = $data['siteSettings'];
-        $stmt = $db->prepare("UPDATE site_settings SET icp_code = ?, police_record_code = ?, site_name = ?, timezone = ? WHERE id = 1");
+        ensureBreakupSchema($db);
+        $stmt = $db->prepare("UPDATE site_settings SET icp_code = ?, police_record_code = ?, site_name = ?, timezone = ?, show_breakup_days = ? WHERE id = 1");
         $stmt->execute([
             mb_substr($s['icp_code'] ?? '', 0, 100),
             mb_substr($s['police_record_code'] ?? '', 0, 100),
             mb_substr($s['site_name'] ?? '', 0, 200),
-            mb_substr($s['timezone'] ?? 'Asia/Shanghai', 0, 50)
+            mb_substr($s['timezone'] ?? 'Asia/Shanghai', 0, 50),
+            intval($s['show_breakup_days'] ?? 0) === 1 ? 1 : 0
         ]);
+    }
+
+    if ($importPeriods !== null) {
+        ensureBreakupSchema($db);
+        $db->exec("DELETE FROM breakup_periods");
+        $stmt = $db->prepare("INSERT INTO breakup_periods (id, start_date, end_date, note, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)");
+        foreach ($importPeriods as $p) {
+            $end = normalizeBreakupDate($p['end_date'] ?? '');
+            $stmt->execute([
+                max(1, min(65535, intval($p['id'] ?? 0))),
+                normalizeBreakupDate($p['start_date'] ?? ''),
+                ($end === null || $end === '') ? null : $end,
+                mb_substr($p['note'] ?? '', 0, 100),
+                $p['created_at'] ?? date('Y-m-d H:i:s'),
+                $p['updated_at'] ?? date('Y-m-d H:i:s')
+            ]);
+        }
     }
     
     $db->commit();

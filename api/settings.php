@@ -10,6 +10,7 @@ require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/BaseController.php';
 require_once __DIR__ . '/../includes/Validator.php';
 require_once __DIR__ . '/../includes/cache.php';
+require_once __DIR__ . '/../includes/breakup.php';
 
 class SettingsController extends BaseController {
     private PDO $db;
@@ -46,9 +47,11 @@ class SettingsController extends BaseController {
                 'icp_code' => '',
                 'police_record_code' => '',
                 'site_name' => '',
-                'timezone' => 'Asia/Shanghai'
+                'timezone' => 'Asia/Shanghai',
+                'show_breakup_days' => 0
             ];
         }
+        $settings['show_breakup_days'] = intval($settings['show_breakup_days'] ?? 0);
 
         $this->success($settings);
     }
@@ -68,12 +71,15 @@ class SettingsController extends BaseController {
             $timezone = 'Asia/Shanghai';
         }
 
-        $stmt = $this->db->prepare(
-            "UPDATE site_settings SET icp_code = ?, police_record_code = ?, site_name = ?, timezone = ?, updated_at = NOW() WHERE id = 1"
-        );
-        $stmt->execute([$icpCode, $policeRecordCode, $siteName, $timezone]);
+        $showBreakupDays = intval($data['show_breakup_days'] ?? 0) === 1 ? 1 : 0;
+        ensureBreakupSchema($this->db);
 
-        Logger::audit('Update settings', ['timezone' => $timezone]);
+        $stmt = $this->db->prepare(
+            "UPDATE site_settings SET icp_code = ?, police_record_code = ?, site_name = ?, timezone = ?, show_breakup_days = ?, updated_at = NOW() WHERE id = 1"
+        );
+        $stmt->execute([$icpCode, $policeRecordCode, $siteName, $timezone, $showBreakupDays]);
+
+        Logger::audit('Update settings', ['timezone' => $timezone, 'show_breakup_days' => $showBreakupDays]);
         Cache::clear('api_data');
         $this->success(null, '保存成功');
     }

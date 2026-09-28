@@ -95,6 +95,7 @@ ensureSession();
                             <div class="timer-label">秒</div>
                         </div>
                     </div>
+                    <p class="deduction-note" id="deduction-note" aria-live="polite"></p>
                 </div>
                 <div id="milestone-container"></div>
             </header>
@@ -181,6 +182,7 @@ ensureSession();
         <div class="lightbox-caption" id="lightbox-caption"></div>
     </div>
 
+    <script src="<?php echo asset('assets/js/together-time.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/utils.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/main.js'); ?>"></script>
 </body>

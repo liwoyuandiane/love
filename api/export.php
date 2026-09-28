@@ -44,8 +44,21 @@ try {
     $stmt = $db->query("SELECT id, source_type, source_url, backup_url, title, artist, updated_at FROM music WHERE id = 1");
     $music = $stmt->fetch();
 
-    $stmt = $db->query("SELECT icp_code, police_record_code, site_name, timezone, updated_at FROM site_settings WHERE id = 1");
+    $breakupPeriods = [];
+    if (!empty($db->query("SHOW TABLES LIKE 'breakup_periods'")->fetchAll())) {
+        $stmt = $db->query("SELECT id, start_date, end_date, note, created_at, updated_at FROM breakup_periods ORDER BY start_date ASC");
+        $breakupPeriods = $stmt->fetchAll();
+    }
+
+    $hasBreakupSetting = !empty($db->query("SHOW COLUMNS FROM site_settings LIKE 'show_breakup_days'")->fetchAll());
+    $settingsSelect = $hasBreakupSetting
+        ? "SELECT icp_code, police_record_code, site_name, timezone, show_breakup_days, updated_at FROM site_settings WHERE id = 1"
+        : "SELECT icp_code, police_record_code, site_name, timezone, updated_at FROM site_settings WHERE id = 1";
+    $stmt = $db->query($settingsSelect);
     $siteSettings = $stmt->fetch();
+    if ($siteSettings) {
+        $siteSettings['show_breakup_days'] = intval($siteSettings['show_breakup_days'] ?? 0);
+    }
 
     $exportData = [
         'exportDate' => date('c'),
@@ -57,6 +70,7 @@ try {
             'explores' => $explores,
             'photos' => $photos,
             'music' => $music,
+            'breakupPeriods' => $breakupPeriods,
             'siteSettings' => $siteSettings
         ]
     ];

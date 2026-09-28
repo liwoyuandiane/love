@@ -383,6 +383,19 @@
             letter-spacing: 1px;
         }
         
+        /* Deduction Note */
+        .deduction-note {
+            display: none;
+            margin-top: 18px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+        
+        .deduction-note.is-visible {
+            display: block;
+        }
+        
         /* Milestone Badge */
         .milestone-badge {
             display: inline-flex;

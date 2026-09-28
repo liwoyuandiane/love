@@ -146,6 +146,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+            $pdo->exec("CREATE TABLE `breakup_periods` (
+                `id` INT PRIMARY KEY AUTO_INCREMENT,
+                `start_date` DATE NOT NULL,
+                `end_date` DATE NULL,
+                `note` VARCHAR(100) NOT NULL DEFAULT '',
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX `idx_start` (`start_date`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
             $pdo->exec("CREATE TABLE `anniversaries` (
                 `id` INT PRIMARY KEY AUTO_INCREMENT,
                 `title` VARCHAR(200) NOT NULL,
@@ -218,6 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 `police_record_code` VARCHAR(100) NOT NULL DEFAULT '',
                 `site_name` VARCHAR(200) NOT NULL DEFAULT '',
                 `timezone` VARCHAR(50) NOT NULL DEFAULT 'Asia/Shanghai',
+                `show_breakup_days` TINYINT(1) NOT NULL DEFAULT 0,
                 `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 

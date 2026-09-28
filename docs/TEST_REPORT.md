@@ -188,3 +188,16 @@ fadeInUp 唯一、focus-visible、prefers-reduced-motion、is-hidden、upload ha
 - settings 回归写入 `site_name=回归站` 后，导入会再次覆盖为备份 ICP 等；以最终导入断言为准。
 
 详细问题清单见：`/workspace/docs/CODE_REVIEW.md`
+
+## 八、分手区间功能回归（2026-09-28）
+
+- **API/页面回归**：`/tmp/opencode/regression.sh` 共 **38 PASS / 0 FAIL**，覆盖：
+  - 页面与健康：health/home/admin 200、install 302；首页含 `#deduction-note`、`together-time.js` 先于 `utils.js`；admin 含 `breakupForm`/`breakupTable`/`showBreakupDays`
+  - 区间 CRUD：POST 合法 201、重叠 400（含文案）、end<start 400、早于纪念日 400、进行中 201、有会话无 CSRF 403、无会话 401、PUT 编辑 200、DELETE 200、重复 DELETE 404、数量断言
+  - data/settings：`breakupPeriods` 与 `show_breakup_days` 键存在；PUT show=1/0 双向持久化
+  - 导出/导入：导出含区间+开关；导入重叠包 400；删区间后合法导入往返，区间内容与总数、开关=1 均恢复
+  - 清理：测试区间清空、开关复位 0
+- **JS 单测**：`node tests/together-time.test.js` **19/19 passed**
+- **静态门禁**：全量 `php -l` 通过；全量 `node --check` 通过；零 `style=`、零行内 handler、CSP 无 `unsafe-inline`
+- **集成点静态断言**：admin.js（renderBreakupTable/handleBreakupSubmit/deleteBreakup/resetBreakupForm/refreshBreakupList、formHandlers、delegation case、show_breakup_days 回显与提交）；main.js（computeElapsed 两处、renderDeductionNote、breakupPeriods 重启条件）
+- 首轮 4 个 FAIL 均为断言写法问题（按行 grep、比较基准笔误、只查列表首项），修正断言后复跑全绿；功能代码无需改动

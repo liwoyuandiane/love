@@ -139,6 +139,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 </div>
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存修改</button>
             </form>
+
+            <div class="breakup-block">
+                <div class="section-header">
+                    <h2><i class="fas fa-heart-broken"></i> 分手期间</h2>
+                </div>
+                <form id="breakupForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>开始日期</label>
+                            <input type="date" class="form-input" id="breakupStart" required>
+                        </div>
+                        <div class="form-group">
+                            <label>结束日期</label>
+                            <input type="date" class="form-input" id="breakupEnd">
+                            <small class="form-hint">留空表示还没复合</small>
+                        </div>
+                        <div class="form-group">
+                            <label>备注（可选）</label>
+                            <input type="text" class="form-input" id="breakupNote" maxlength="100" placeholder="例如：冷战分开一段时间">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success" id="breakupSubmitBtn"><i class="fas fa-plus"></i> 添加区间</button>
+                    <button type="button" class="btn btn-secondary is-hidden" id="breakupCancelBtn"><i class="fas fa-times"></i> 取消编辑</button>
+                </form>
+                <table class="data-table">
+                    <thead><tr><th>开始日期</th><th>结束日期</th><th>备注</th><th>操作</th></tr></thead>
+                    <tbody id="breakupTable"></tbody>
+                </table>
+            </div>
         </div>
 
         <div class="section" id="section-anniversary">
@@ -371,6 +400,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         <label>公安联网备案号（可选）</label>
                         <input type="text" class="form-input" id="policeRecordCode" maxlength="100" placeholder="如：粤公网安备XXXXXXXXXXXXXXXX号">
                         <small class="form-hint">如果网站需要公安联网备案，请填写</small>
+                    </div>
+                    <div class="form-group span-full">
+                        <label class="checkbox-label" for="showBreakupDays">
+                            <input type="checkbox" class="form-checkbox" id="showBreakupDays">
+                            <span>首页展示扣除的分手天数</span>
+                        </label>
+                        <small class="form-hint">默认隐藏。开启后，首页计时器下方显示累计扣除的分手天数</small>
                     </div>
                 </div>
                 <div class="info-banner">

@@ -143,11 +143,13 @@ const setupEventListeners = () => {
         photoUrlForm: handlePhotoUrl,
         musicForm: handleMusicSubmit,
         settingsForm: handleSettingsSubmit,
+        breakupForm: handleBreakupSubmit,
         adminUserForm: handleAdminUserSubmit
     };
     Object.entries(formHandlers).forEach(([id, handler]) => {
         $(id)?.addEventListener('submit', e => { e.preventDefault(); handler(e); });
     });
+    $('breakupCancelBtn')?.addEventListener('click', resetBreakupForm);
     $$('input[name="sourceType"]').forEach(r => r.addEventListener('change', () => {
         const isLocal = r.value === 'local';
         $('localPathGroup')?.classList.toggle('is-hidden', !isLocal);
@@ -266,20 +268,22 @@ const loadAllData = async (showError = true) => {
 
 const renderAllSections = () => {
     renderCoupleInfo(); renderAnniversaryTable(); renderWishlistTable(); renderExploreTable();
-    renderPhotoGrid(); renderMusicForm(); renderSettingsForm();
+    renderPhotoGrid(); renderMusicForm(); renderSettingsForm(); renderBreakupTable();
 };
 
 const renderSettingsForm = () => {
     if (!siteData?.settings) return;
-    const { icp_code, police_record_code, site_name, timezone } = siteData.settings;
+    const { icp_code, police_record_code, site_name, timezone, show_breakup_days } = siteData.settings;
     const icpEl = $('icpCode');
     const policeEl = $('policeRecordCode');
     const siteNameEl = $('siteName');
     const timezoneEl = $('timezone');
+    const showBreakupEl = $('showBreakupDays');
     if (icpEl) icpEl.value = icp_code || '';
     if (policeEl) policeEl.value = police_record_code || '';
     if (siteNameEl) siteNameEl.value = site_name || '';
     if (timezoneEl) timezoneEl.value = timezone || 'Asia/Shanghai';
+    if (showBreakupEl) showBreakupEl.checked = show_breakup_days === 1;
 };
 
 const handleSettingsSubmit = async e => {
@@ -288,7 +292,8 @@ const handleSettingsSubmit = async e => {
         icp_code: $('icpCode')?.value.trim() || '',
         police_record_code: $('policeRecordCode')?.value.trim() || '',
         site_name: $('siteName')?.value.trim() || '',
-        timezone: $('timezone')?.value.trim() || 'Asia/Shanghai'
+        timezone: $('timezone')?.value.trim() || 'Asia/Shanghai',
+        show_breakup_days: $('showBreakupDays')?.checked ? 1 : 0
     };
     try {
         const res = await csrfFetch(`${API_BASE}/settings`, { method: 'PUT', credentials: 'include', body: JSON.stringify(data) });
@@ -301,6 +306,7 @@ const handleSettingsSubmit = async e => {
                 siteData.settings.police_record_code = data.police_record_code;
                 siteData.settings.site_name = data.site_name;
                 siteData.settings.timezone = data.timezone;
+                siteData.settings.show_breakup_days = data.show_breakup_days;
             }
         } else {
             showToast(result.error?.message || '保存失败', 'error');
@@ -356,6 +362,93 @@ const handleCoupleSubmit = async e => {
             }
         }
         else showToast(result.error?.message || '更新失败', 'error');
+    } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
+};
+
+// ===== 分手期间管理 =====
+let breakupEditId = null;
+
+const resetBreakupForm = () => {
+    breakupEditId = null;
+    $('breakupForm')?.reset();
+    const btn = $('breakupSubmitBtn');
+    if (btn) btn.innerHTML = '<i class="fas fa-plus"></i> 添加区间';
+    $('breakupCancelBtn')?.classList.add('is-hidden');
+};
+
+const refreshBreakupList = async () => {
+    try {
+        const res = await fetch(`${API_BASE}/breakup-periods`, { credentials: 'include' });
+        const result = await res.json();
+        if (result.success && Array.isArray(result.data)) {
+            if (siteData) siteData.breakupPeriods = result.data;
+            renderBreakupTable();
+        }
+    } catch (e) { console.error('刷新分手期间失败:', e); }
+};
+
+const renderBreakupTable = () => {
+    const tbody = $('breakupTable');
+    if (!tbody) return;
+    const items = siteData?.breakupPeriods || [];
+    if (!items.length) { tbody.innerHTML = emptyState('fa-heart-broken', '暂无分手期间'); return; }
+    tbody.innerHTML = items.map(item => `
+        <tr><td>${utils.formatDate(item.start_date) || '-'}</td>
+        <td>${item.end_date ? (utils.formatDate(item.end_date) || '-') : '进行中'}</td>
+        <td>${utils.escapeHtml(item.note || '-')}</td>
+        <td class="actions"><button class="btn btn-secondary btn-sm" data-action="edit-breakup" data-id="${item.id}" title="编辑"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-danger btn-sm" data-action="delete-breakup" data-id="${item.id}" title="删除"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+};
+
+const handleBreakupSubmit = async e => {
+    e.preventDefault();
+    const data = {
+        start_date: $('breakupStart').value,
+        end_date: $('breakupEnd').value || null,
+        note: $('breakupNote').value.trim()
+    };
+    const isEdit = breakupEditId !== null;
+    try {
+        const url = isEdit ? `${API_BASE}/breakup-periods/${breakupEditId}` : `${API_BASE}/breakup-periods`;
+        const res = await csrfFetch(url, { method: isEdit ? 'PUT' : 'POST', credentials: 'include', body: JSON.stringify(data) });
+        const result = await res.json();
+        if (result.success) {
+            showToast(isEdit ? '区间更新成功' : '区间添加成功', 'success');
+            clearFrontendCache();
+            resetBreakupForm();
+            await refreshBreakupList();
+        } else {
+            showToast(result.error?.message || '保存失败', 'error');
+        }
+    } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
+};
+
+const startBreakupEdit = id => {
+    const item = (siteData?.breakupPeriods || []).find(p => p.id === id);
+    if (!item) return;
+    breakupEditId = id;
+    $('breakupStart').value = utils.formatDate(item.start_date) || '';
+    $('breakupEnd').value = item.end_date ? (utils.formatDate(item.end_date) || '') : '';
+    $('breakupNote').value = item.note || '';
+    const btn = $('breakupSubmitBtn');
+    if (btn) btn.innerHTML = '<i class="fas fa-save"></i> 保存修改';
+    $('breakupCancelBtn')?.classList.remove('is-hidden');
+    $('breakupStart').focus();
+};
+
+const deleteBreakup = async id => {
+    if (!confirm('确定要删除这条分手区间吗？')) return;
+    try {
+        const res = await csrfFetch(`${API_BASE}/breakup-periods/${id}`, { method: 'DELETE', credentials: 'include' });
+        const result = await res.json();
+        if (result.success) {
+            showToast('删除成功', 'success');
+            clearFrontendCache();
+            if (breakupEditId === id) resetBreakupForm();
+            await refreshBreakupList();
+        } else {
+            showToast(result.error?.message || '删除失败', 'error');
+        }
     } catch (e) { showToast('网络错误，请稍后重试', 'error'); }
 };
 
@@ -913,6 +1006,14 @@ document.addEventListener('click', async (e) => {
         case 'delete-item':
             e.preventDefault();
             deleteItem(target.dataset.type, parseInt(target.dataset.id, 10));
+            break;
+        case 'edit-breakup':
+            e.preventDefault();
+            startBreakupEdit(parseInt(target.dataset.id, 10));
+            break;
+        case 'delete-breakup':
+            e.preventDefault();
+            deleteBreakup(parseInt(target.dataset.id, 10));
             break;
         case 'toggle-wishlist-admin':
             e.preventDefault();
