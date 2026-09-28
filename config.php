@@ -60,7 +60,7 @@ if (session_status() === PHP_SESSION_NONE) {
 date_default_timezone_set('Asia/Shanghai');
 
 // 版本号
-define('APP_VERSION', '3.2.0');
+define('APP_VERSION', '3.3.0');
 
 // 静态资源版本号统一入口
 require_once __DIR__ . '/includes/assets.php';
