@@ -421,17 +421,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 <h2><i class="fas fa-user-shield"></i> 账号管理</h2>
             </div>
             <div class="current-user-info">
-                <i class="fas fa-user-circle"></i> 当前登录账号: <strong><?php echo htmlspecialchars($currentUsername, ENT_QUOTES, 'UTF-8'); ?></strong>
+                <i class="fas fa-user-circle"></i> 当前登录账号: <strong id="currentUsernameLabel"><?php echo htmlspecialchars($currentUsername, ENT_QUOTES, 'UTF-8'); ?></strong>
             </div>
             <form id="adminUserForm">
                 <div class="form-grid">
                     <div class="form-group">
                         <label>新用户名</label>
-                        <input type="text" class="form-input" id="adminUsername" required maxlength="50" placeholder="请输入新用户名" autocomplete="username">
+                        <!-- 不设 required：支持"只改密码"场景（两项填其一即可，服务端同样校验） -->
+                        <input type="text" class="form-input" id="adminUsername" maxlength="50" placeholder="留空则不修改用户名" autocomplete="username">
                     </div>
                     <div class="form-group">
                         <label>新密码</label>
-                        <input type="password" class="form-input" id="adminPassword" required minlength="8" maxlength="72" placeholder="请输入新密码（8-72位，需包含字母和数字）" autocomplete="new-password">
+                        <input type="password" class="form-input" id="adminPassword" minlength="8" maxlength="72" placeholder="留空则不修改密码（如填写需 8-72 位，含字母和数字）" autocomplete="new-password">
                     </div>
                 </div>
                 <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> 保存修改</button>

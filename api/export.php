@@ -84,7 +84,7 @@ try {
 
     echo $json;
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     Logger::error('Export API error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, null, '导出失败', 'SERVER_ERROR');

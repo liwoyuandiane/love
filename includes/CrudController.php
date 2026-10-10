@@ -27,7 +27,7 @@ abstract class CrudController extends BaseController {
             };
         } catch (ValidationException $e) {
             $this->error($e->getMessage(), 'VALIDATION_ERROR');
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Logger::error($this->resourceLabel . ' API error: ' . $e->getMessage());
             $this->serverError();
         }
@@ -71,6 +71,14 @@ abstract class CrudController extends BaseController {
         $id = $this->resolveId($data);
         $fields = $this->extractFields($data);
         $this->validateFields($fields, 'update');
+
+        // 先确认记录存在：否则更新不存在的 id 会返回"更新成功"，
+        // 且 MySQL 下值未变化时 rowCount=0 不能用于判断存在性
+        $check = $this->db->prepare("SELECT id FROM {$this->table} WHERE id = ?");
+        $check->execute([$id]);
+        if ($check->fetch() === false) {
+            $this->error('记录不存在', 'NOT_FOUND', 404);
+        }
 
         [$sets, $vals] = $this->updateColumns($fields);
         $vals[] = $id;

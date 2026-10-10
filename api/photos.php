@@ -31,7 +31,7 @@ class PhotoController extends BaseController {
             };
         } catch (ValidationException $e) {
             $this->error($e->getMessage(), 'VALIDATION_ERROR');
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Logger::error('Photos API error: ' . $e->getMessage());
             $this->serverError();
         }
@@ -86,6 +86,13 @@ class PhotoController extends BaseController {
             $this->error('文件不是有效的图片', 'VALIDATION_ERROR');
         }
 
+        // 纵深防御：拒绝嵌入脚本标记的 polyglot 文件（如 "GIF89a<?php ..."，
+        // getimagesize 只校验魔数即可通过）。合法图片二进制几乎不可能在头部出现这些标记
+        $head = (string)file_get_contents($file['tmp_name'], false, null, 0, 2048);
+        if (preg_match('/<\?|<script/i', $head)) {
+            $this->error('文件内容异常，已拒绝上传', 'VALIDATION_ERROR');
+        }
+
         $ext = match($mimeType) {
             'image/jpeg' => 'jpg',
             'image/png' => 'png',
@@ -111,8 +118,17 @@ class PhotoController extends BaseController {
 
         $url = '/assets/uploads/' . $filename;
 
+        // 先截断到列宽（VARCHAR(200)），避免严格模式写入失败留下孤儿文件
+        $caption = mb_substr($caption, 0, 200);
+
         $stmt = $this->db->prepare("INSERT INTO photos (url, caption, source_type) VALUES (?, ?, 'local')");
-        $stmt->execute([$url, $caption]);
+        try {
+            $stmt->execute([$url, $caption]);
+        } catch (PDOException $e) {
+            // 文件已落盘但入库失败：清理避免孤儿文件
+            @unlink($destination);
+            throw $e;
+        }
 
         $id = $this->db->lastInsertId();
         $stmt = $this->db->prepare("SELECT * FROM photos WHERE id = ?");
@@ -261,8 +277,13 @@ class PhotoController extends BaseController {
         $data = $this->getJsonInput();
         $id = $this->resolveId($data);
 
-        $caption = trim($data['caption'] ?? '');
-        $url = isset($data['url']) ? trim($data['url']) : null;
+        $caption = is_string($data['caption'] ?? null) ? trim($data['caption']) : '';
+        $caption = mb_substr($caption, 0, 200);
+        $url = isset($data['url']) && is_string($data['url']) ? trim($data['url']) : null;
+
+        $stmt = $this->db->prepare("SELECT * FROM photos WHERE id = ?");
+        $stmt->execute([$id]);
+        $photo = $stmt->fetch();
 
         if ($url !== null && $url !== '') {
             if (!filter_var($url, FILTER_VALIDATE_URL)) {
@@ -273,6 +294,11 @@ class PhotoController extends BaseController {
             }
             $stmt = $this->db->prepare("UPDATE photos SET caption = ?, url = ?, source_type = 'url', updated_at = NOW() WHERE id = ?");
             $stmt->execute([$caption, $url, $id]);
+
+            // 本地照片改为外链后，旧的本地文件不再被引用，顺手删除避免堆积
+            if ($photo && $photo['source_type'] === 'local') {
+                $this->removeLocalFile((string)$photo['url']);
+            }
         } else {
             $stmt = $this->db->prepare("UPDATE photos SET caption = ?, updated_at = NOW() WHERE id = ?");
             $stmt->execute([$caption, $id]);
@@ -294,12 +320,7 @@ class PhotoController extends BaseController {
         $photo = $stmt->fetch();
 
         if ($photo && $photo['source_type'] === 'local') {
-            $uploadDir = realpath(__DIR__ . '/../assets/uploads/');
-            $filePath = realpath(__DIR__ . '/..' . $photo['url']);
-
-            if ($filePath !== false && $uploadDir !== false && str_starts_with($filePath, $uploadDir)) {
-                @unlink($filePath);
-            }
+            $this->removeLocalFile((string)$photo['url']);
         }
 
         $stmt = $this->db->prepare("DELETE FROM photos WHERE id = ?");
@@ -312,6 +333,20 @@ class PhotoController extends BaseController {
         Logger::audit('Delete photo', ['id' => $id, 'url' => $photo['url'] ?? '']);
         Cache::clear('api_data');
         $this->success(null, '删除成功');
+    }
+
+    /**
+     * 删除本地上传的图片文件（带路径穿越防护）
+     */
+    private function removeLocalFile(string $url): void {
+        $uploadDir = realpath(__DIR__ . '/../assets/uploads/');
+        $filePath = realpath(__DIR__ . '/..' . $url);
+
+        // 目录分隔符后缀：防止 /assets/uploads-evil 等前缀相同的兄弟目录绕过检查
+        if ($filePath !== false && $uploadDir !== false
+            && str_starts_with($filePath, $uploadDir . DIRECTORY_SEPARATOR)) {
+            @unlink($filePath);
+        }
     }
 }
 

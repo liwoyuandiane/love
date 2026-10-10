@@ -88,6 +88,23 @@ t('多区间：扣除量求和', () => {
     assert.strictEqual(r.excludedMs, 41 * DAY);
 });
 
+t('重叠区间（脏数据）：合并后不双扣', () => {
+    // [01-01,02-10) 与 [02-01,03-01) 重叠 9 天，并集 = 59 天而非 68 天
+    const r = TT.computeElapsed(ANN, [
+        { start_date: '2021-01-01', end_date: '2021-02-10' },
+        { start_date: '2021-02-01', end_date: '2021-03-01' }
+    ], NOW);
+    assert.strictEqual(r.excludedMs, 59 * DAY);
+});
+
+t('包含关系区间（脏数据）：大区间吞掉小区间', () => {
+    const r = TT.computeElapsed(ANN, [
+        { start_date: '2021-01-01', end_date: '2021-04-01' },
+        { start_date: '2021-02-01', end_date: '2021-02-05' }
+    ], NOW);
+    assert.strictEqual(r.excludedMs, 90 * DAY);
+});
+
 t('相邻区间首尾相接：无重复扣除', () => {
     const r = TT.computeElapsed(ANN, [
         { start_date: '2021-01-01', end_date: '2021-02-01' },

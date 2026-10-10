@@ -67,22 +67,28 @@ class Logger {
         }
     }
     
-    public static function info(string $message): void {
-        self::write('INFO', $message);
+    /** 上下文随消息一起记录（JSON），避免多余参数被静默丢弃 */
+    private static function formatContext(?array $context): string {
+        return $context ? ' | ' . json_encode($context, JSON_UNESCAPED_UNICODE) : '';
     }
-    
-    public static function warning(string $message): void {
-        self::write('WARNING', $message);
+
+    public static function info(string $message, ?array $context = null): void {
+        self::write('INFO', $message . self::formatContext($context));
     }
-    
-    public static function error(string $message): void {
-        self::write('ERROR', $message, 'error');
-        self::write('ERROR', $message);
+
+    public static function warning(string $message, ?array $context = null): void {
+        self::write('WARNING', $message . self::formatContext($context));
     }
-    
-    public static function debug(string $message): void {
+
+    public static function error(string $message, ?array $context = null): void {
+        $full = $message . self::formatContext($context);
+        self::write('ERROR', $full, 'error');
+        self::write('ERROR', $full);
+    }
+
+    public static function debug(string $message, ?array $context = null): void {
         if (getenv('APP_DEBUG') === 'true') {
-            self::write('DEBUG', $message);
+            self::write('DEBUG', $message . self::formatContext($context));
         }
     }
     

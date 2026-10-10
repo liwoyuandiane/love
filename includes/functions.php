@@ -10,12 +10,13 @@ function escapeHtml(string $text): string {
     return htmlspecialchars($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 }
 
-function formatDate(string $date = null): string {
+// 可空参数显式声明 ?type：隐式可空（string $x = null）在 PHP 8.4 已弃用
+function formatDate(?string $date = null): string {
     if (!$date) return '';
     return strpos($date, 'T') !== false ? explode('T', $date)[0] : $date;
 }
 
-function formatDateTime(string $date = null): string {
+function formatDateTime(?string $date = null): string {
     if (!$date) return '';
     return date('Y-m-d H:i:s', strtotime($date));
 }
@@ -32,7 +33,9 @@ function jsonResponse(bool $success, $data = null, string $message = '', string 
     if ($errorCode) {
         $response['error'] = ['code' => $errorCode, 'message' => $message];
     }
-    echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    // JSON_HEX_TAG/AMP：防御纵深——即使响应被错误地以 text/html 返回，
+    // <script> 等标记也不会形成可执行内容（前端 res.json() 解析不受影响）
+    echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
     exit;
 }
 

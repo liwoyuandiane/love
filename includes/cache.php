@@ -19,7 +19,7 @@ class Cache {
         self::$initialized = true;
     }
 
-    public static function get(string $key, int $ttl = null): mixed {
+    public static function get(string $key, ?int $ttl = null): mixed {
         self::ensureDir();
         $file = self::getFilePath($key);
         if (!file_exists($file)) return null;
@@ -34,12 +34,27 @@ class Cache {
         return $content ? json_decode($content, true) : null;
     }
 
-    public static function set(string $key, mixed $value, int $ttl = null): bool {
+    /**
+     * @param int|null $ttl 保留参数：TTL 判定在读取端进行（get() 按 filemtime + ttl 检查），
+     *                      此处仅作接口兼容，不再无意义地被忽略
+     */
+    public static function set(string $key, mixed $value, ?int $ttl = null): bool {
         self::ensureDir();
         $file = self::getFilePath($key);
         $data = json_encode($value, JSON_UNESCAPED_UNICODE);
-        $result = file_put_contents($file, $data, LOCK_EX);
-        return $result !== false;
+        if ($data === false) {
+            return false;
+        }
+        // 写入临时文件后 rename：原子替换，避免并发读端读到半截 JSON
+        $tmp = $file . '.' . bin2hex(random_bytes(6)) . '.tmp';
+        if (@file_put_contents($tmp, $data, LOCK_EX) === false) {
+            return false;
+        }
+        if (!@rename($tmp, $file)) {
+            @unlink($tmp);
+            return false;
+        }
+        return true;
     }
 
     public static function delete(string $key): void {

@@ -99,7 +99,13 @@ const startPeriodicSync = () => {
     if (syncTimer) clearInterval(syncTimer);
     syncTimer = setInterval(async () => {
         try {
-            await csrfFetch(ADMIN_API.sync, { method: 'POST', credentials: 'include' });
+            const res = await csrfFetch(ADMIN_API.sync, { method: 'POST', credentials: 'include' });
+            // 服务端在 token 过期时会轮换并随 sync 响应下发新 token，
+            // 及时更新本地值，避免长开页面 2 小时后所有写操作 403
+            const result = await res.json();
+            if (result?.success && result.data?.csrf_token) {
+                window.CSRF_TOKEN = result.data.csrf_token;
+            }
         } catch (e) { console.error('Sync error:', e); }
     }, SYNC_INTERVAL);
 };
@@ -193,9 +199,15 @@ const handleLogin = async () => {
         if (result.success) {
             if (result.data && result.data.csrf_token) window.CSRF_TOKEN = result.data.csrf_token;
             isLoggedIn = true;
-            isAdmin = true;
-            window.IS_ADMIN = true;
+            // 按服务端返回的角色设置，避免普通 user 账号在界面上看到管理员专属页签
+            isAdmin = !!(result.data && result.data.role === 'admin');
+            window.IS_ADMIN = isAdmin;
             filterTabsByRole();
+            // JS 登录不刷新页面，同步更新"当前登录账号"显示
+            const currentUserEl = $('currentUsernameLabel');
+            if (currentUserEl && result.data && result.data.username) {
+                currentUserEl.textContent = result.data.username;
+            }
             $('loginOverlay').classList.add('is-hidden');
             $('adminContainer').classList.add('active');
             $('loadingOverlay').classList.remove('is-hidden');
@@ -667,8 +679,14 @@ $('photoEditForm').onsubmit = async e => {
         if (result.success) {
             showToast('更新成功', 'success');
             clearFrontendCache();
+            // 先保存 id：closePhotoEditModal 会把 currentEditingPhotoId 置 null，
+            // 置 null 之后再取会导致本地状态更新永远找不到目标（空操作）
+            const editId = currentEditingPhotoId;
             closePhotoEditModal();
-            updateInLocalList('photos', currentEditingPhotoId, { caption, url: url || undefined });
+            const patch = { caption };
+            // 仅在确实提交了新 URL 时才写入，避免把本地照片的 url 覆盖成 undefined
+            if (url) patch.url = url;
+            updateInLocalList('photos', editId, patch);
             renderPhotoGrid();
         } else {
             showToast(result.error?.message || '更新失败', 'error');

@@ -19,10 +19,15 @@ if ($method === 'POST') {
 
     if ($action === 'login') {
         $data = json_decode(file_get_contents('php://input'), true);
-        $username = trim($data['username'] ?? '');
-        $password = $data['password'] ?? '';
+        if (!is_array($data)) {
+            $data = [];
+        }
+        // is_string 校验：客户端传数组等非标量时 trim() 会抛 TypeError，
+        // 未捕获的 TypeError 会在 display_errors=On 的环境泄露绝对路径与堆栈
+        $username = is_string($data['username'] ?? null) ? trim($data['username']) : '';
+        $password = is_string($data['password'] ?? null) ? $data['password'] : '';
 
-        if (empty($username) || empty($password)) {
+        if ($username === '' || $password === '') {
             http_response_code(400);
             jsonResponse(false, null, '请填写用户名和密码', 'VALIDATION_ERROR');
         }
@@ -48,7 +53,7 @@ if ($method === 'POST') {
                 http_response_code(401);
                 jsonResponse(false, null, $result['message'], 'AUTH_FAILED');
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Logger::error('Login error: ' . $e->getMessage());
             http_response_code(500);
             jsonResponse(false, null, '登录失败', 'SERVER_ERROR');

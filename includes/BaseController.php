@@ -6,6 +6,11 @@
 
 class BaseController {
     protected function requireAuth(): void {
+        // 先执行会话空闲超时检查：此前 CRUD 接口从不调 ensureSession，
+        // 被窃取的会话在 30 分钟空闲后仍可继续写操作
+        if (function_exists('ensureSession')) {
+            ensureSession();
+        }
         if (!isLoggedIn()) {
             if (function_exists('consumeSessionExpiredFlag') && consumeSessionExpiredFlag()) {
                 http_response_code(401);
@@ -17,6 +22,9 @@ class BaseController {
     }
 
     protected function requireAdmin(): void {
+        if (function_exists('ensureSession')) {
+            ensureSession();
+        }
         if (!isAdmin()) {
             http_response_code(403);
             jsonResponse(false, null, '需要管理员权限', 'FORBIDDEN');
@@ -44,7 +52,7 @@ class BaseController {
         return $_SERVER['REQUEST_METHOD'];
     }
 
-    protected function success(array $data = null, string $message = '', int $code = 200): void {
+    protected function success(?array $data = null, string $message = '', int $code = 200): void {
         http_response_code($code);
         jsonResponse(true, $data, $message);
     }

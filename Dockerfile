@@ -28,6 +28,10 @@ COPY --from=builder /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions
 COPY --from=builder /usr/local/etc/php/conf.d/docker-php-ext-gd.ini /usr/local/etc/php/conf.d/docker-php-ext-gd.ini
 COPY --from=builder /usr/local/etc/php/conf.d/docker-php-ext-pdo_mysql.ini /usr/local/etc/php/conf.d/docker-php-ext-pdo_mysql.ini
 
+# 官方镜像默认无 php.ini（display_errors=On）：异常堆栈会把绝对路径返回给客户端。
+# 切换到 production 模板（display_errors=Off、log_errors=On）
+RUN cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini
+
 # 安装 Nginx 与 GD 运行时库（体积小、无编译工具链）
 RUN apk add --no-cache nginx \
         libpng \

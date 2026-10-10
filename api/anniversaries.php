@@ -26,10 +26,12 @@ class AnniversaryController extends CrudController {
         if (!in_array($type, $allowedTypes, true)) {
             $type = 'anniversary';
         }
+        // is_string 防御：非标量输入直接 trim 会抛 TypeError（500）
+        $str = static fn($v): string => is_string($v) ? trim($v) : '';
         return [
-            'title' => trim($data['title'] ?? ''),
-            'date' => trim($data['date'] ?? ''),
-            'description' => trim($data['description'] ?? ''),
+            'title' => $str($data['title'] ?? ''),
+            'date' => $str($data['date'] ?? ''),
+            'description' => $str($data['description'] ?? ''),
             'type' => $type,
             'reminder_days' => intval($data['reminder_days'] ?? 0),
         ];

@@ -38,3 +38,6 @@ Thumbs.db
 
 # MonkeyCode
 .monkeycode/
+
+# Browser test artifacts (Playwright MCP)
+.playwright-mcp/

@@ -217,10 +217,13 @@ class RateLimiter {
     }
 
     private static function isTrustedProxy(string $ip): bool {
-        // 默认仅信任本机回环（本地开发的 php -S 等场景）
+        // 默认不信任任何代理：应用前若有本机反向代理（宿主机 nginx→容器，
+        // REMOTE_ADDR=127.0.0.1），默认信任回环会让任何人都能伪造
+        // X-Forwarded-For 绕过 IP 限速并污染审计日志。
+        // 需要时通过环境变量 TRUSTED_PROXIES 显式配置（逗号分隔 IP/CIDR）
         $trusted = trim((string)getenv('TRUSTED_PROXIES'));
         if ($trusted === '') {
-            $trusted = '127.0.0.1,::1';
+            return false;
         }
 
         $parts = array_map('trim', explode(',', $trusted));

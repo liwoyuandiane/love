@@ -28,7 +28,7 @@ class MusicController extends BaseController {
             };
         } catch (ValidationException $e) {
             $this->error($e->getMessage(), 'VALIDATION_ERROR');
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Logger::error('Music API error: ' . $e->getMessage());
             $this->serverError();
         }

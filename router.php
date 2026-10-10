@@ -31,6 +31,16 @@ if (preg_match('#^/api/([^/]+)/(\d+)$#', $uri, $matches)) {
     }
 }
 
+// API files addressed directly by filename (e.g., /api/admin-verify.php)
+// 前端 admin.js/boot.js 直接按文件名调用这些端点，需在静态白名单之外显式放行
+if (preg_match('#^/api/([A-Za-z0-9_-]+)\.php$#', $uri, $matches)) {
+    $apiFile = __DIR__ . '/api/' . $matches[1] . '.php';
+    if (file_exists($apiFile)) {
+        require $apiFile;
+        return true;
+    }
+}
+
 // API routes (e.g., /api/wishlists)
 if (preg_match('#^/api/([^/]+)$#', $uri, $matches)) {
     if ($isValidApiSegment($matches[1])) {
@@ -48,14 +58,19 @@ if ($uri === '/install/' || $uri === '/install') {
     return true;
 }
 
-// Static files (block path traversal; only serve files under project root)
+// Static files: allowlist approach — only serve from /assets/ and /favicon.ico.
+// Serving "any existing file" would expose .env (DB credentials), .git/*, CLAUDE.md,
+// logs/ and cache/ on the dev server; a denylist is easy to get wrong.
 if ($uri !== '/' && strpos($uri, '..') === false) {
-    $staticPath = __DIR__ . $uri;
-    $realPath = realpath($staticPath);
-    $realRoot = realpath(__DIR__);
-    if ($realPath !== false && $realRoot !== false && is_file($realPath)
-        && strpos($realPath, $realRoot . DIRECTORY_SEPARATOR) === 0) {
-        return false;
+    $isAllowedStatic = str_starts_with($uri, '/assets/') || $uri === '/favicon.ico';
+    if ($isAllowedStatic) {
+        $staticPath = __DIR__ . $uri;
+        $realPath = realpath($staticPath);
+        $realRoot = realpath(__DIR__);
+        if ($realPath !== false && $realRoot !== false && is_file($realPath)
+            && strpos($realPath, $realRoot . DIRECTORY_SEPARATOR) === 0) {
+            return false;
+        }
     }
 }
 

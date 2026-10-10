@@ -4,6 +4,14 @@
  * 所有配置从 .env 加载
  */
 
+// 关闭错误输出（异常仍写入 PHP error_log / logs/error.log）：
+// display_errors=On 时未捕获异常会把绝对路径与调用栈返回给客户端。
+// 本地调试可在环境变量设 APP_DEBUG=1 显式开启
+if (!in_array(getenv('APP_DEBUG'), ['1', 'true'], true)) {
+    ini_set('display_errors', '0');
+    ini_set('display_startup_errors', '0');
+}
+
 // 安全 headers
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
@@ -11,7 +19,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
     header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 }
-header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data: https:; connect-src 'self'; media-src 'self' https://music.163.com https://*.music.126.net http://*.music.126.net;");
+header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data: https:; connect-src 'self' https://api.github.com; media-src 'self' https://music.163.com https://*.music.126.net http://*.music.126.net;");
 
 // 加载环境变量（.env 路径由 env.php 统一解析：Docker 数据目录优先）
 require_once __DIR__ . '/env.php';

@@ -72,8 +72,10 @@
             }
         }
 
-        // 扣除与纪念日的交集，钳制在 [annStart, effectiveEnd)
-        var excludedMs = 0;
+        // 扣除与纪念日的交集，钳制在 [annStart, effectiveEnd)。
+        // 先合并重叠/首尾相接区间再求和：服务端校验保证区间不重叠，
+        // 但并发写入或直接改库可能破坏该不变量，不合并会把重叠部分双倍扣除
+        var spans = [];
         for (var j = 0; j < list.length; j++) {
             var period = list[j];
             if (!period) {
@@ -93,8 +95,27 @@
             var from = ps > annStart ? ps : annStart;
             var to = pe < effectiveEnd ? pe : effectiveEnd;
             if (to > from) {
-                excludedMs += to - from;
+                spans.push([from, to]);
             }
+        }
+        spans.sort(function (a, b) { return a[0] - b[0]; });
+        var excludedMs = 0;
+        if (spans.length > 0) {
+            var curFrom = spans[0][0];
+            var curTo = spans[0][1];
+            for (var k = 1; k < spans.length; k++) {
+                if (spans[k][0] <= curTo) {
+                    // 重叠或首尾相接：扩展当前区间
+                    if (spans[k][1] > curTo) {
+                        curTo = spans[k][1];
+                    }
+                } else {
+                    excludedMs += curTo - curFrom;
+                    curFrom = spans[k][0];
+                    curTo = spans[k][1];
+                }
+            }
+            excludedMs += curTo - curFrom;
         }
 
         var elapsedMs = (effectiveEnd - annStart) - excludedMs;

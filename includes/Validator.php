@@ -57,25 +57,43 @@ class Validator {
         }
     }
 
-    private static function validateMax(string $value, string $field, string $length): void {
+    /**
+     * 文本类规则统一入口：JSON 传数组等非标量时抛验证错误，
+     * 避免直接进 string 参数触发 TypeError（500 + 堆栈泄露）
+     */
+    private static function requireString(mixed $value, string $field): string {
+        if ($value === null) {
+            return '';
+        }
+        if (!is_string($value) && !is_numeric($value)) {
+            throw new ValidationException("{$field}必须是文本");
+        }
+        return (string)$value;
+    }
+
+    private static function validateMax(mixed $value, string $field, string $length): void {
+        $value = self::requireString($value, $field);
         if (mb_strlen($value) > intval($length)) {
             throw new ValidationException("{$field}长度不能超过{$length}个字符");
         }
     }
 
-    private static function validateMin(string $value, string $field, string $length): void {
+    private static function validateMin(mixed $value, string $field, string $length): void {
+        $value = self::requireString($value, $field);
         if (mb_strlen($value) < intval($length)) {
             throw new ValidationException("{$field}长度不能少于{$length}个字符");
         }
     }
 
-    private static function validateUrl(string $value, string $field): void {
+    private static function validateUrl(mixed $value, string $field): void {
+        $value = self::requireString($value, $field);
         if ($value !== '' && !filter_var($value, FILTER_VALIDATE_URL)) {
             throw new ValidationException("{$field}不是有效的URL");
         }
     }
 
-    private static function validateDate(string $value, string $field): void {
+    private static function validateDate(mixed $value, string $field): void {
+        $value = self::requireString($value, $field);
         if ($value !== '') {
             $parts = explode('-', $value);
             if (count($parts) !== 3) {
@@ -88,7 +106,8 @@ class Validator {
         }
     }
 
-    private static function validateEmail(string $value, string $field): void {
+    private static function validateEmail(mixed $value, string $field): void {
+        $value = self::requireString($value, $field);
         if ($value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
             throw new ValidationException("{$field}不是有效的邮箱格式");
         }

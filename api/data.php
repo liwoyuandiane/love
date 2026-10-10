@@ -24,7 +24,7 @@ try {
             'success' => true,
             'data' => $cached,
             'cached' => true
-        ], JSON_UNESCAPED_UNICODE);
+        ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
         exit;
     }
 
@@ -81,9 +81,9 @@ try {
     echo json_encode([
         'success' => true,
         'data' => $data
-    ], JSON_UNESCAPED_UNICODE);
+    ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Data API error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode([

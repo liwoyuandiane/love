@@ -70,6 +70,10 @@ try {
         }
     }
 
+    // ensureBreakupSchema 含 DDL（CREATE TABLE/ALTER TABLE），MySQL 会隐式提交事务，
+    // 必须在 beginTransaction 之前执行，否则事务中途 schema 变更后失败将无法回滚
+    ensureBreakupSchema($db);
+
     $db->beginTransaction();
     
     if (!empty($data['coupleInfo'])) {
@@ -139,9 +143,14 @@ try {
         $allowedSourceTypes = ['local', 'url'];
         foreach ($data['photos'] as $p) {
             $sourceType = in_array($p['source_type'] ?? '', $allowedSourceTypes) ? $p['source_type'] : 'url';
+            // 与 photos API 校验保持一致：外链需通过 isUrlSafe（防 SSRF/javascript:），
+            // 本地文件仅允许 /assets/uploads/ 下的相对路径
+            $url = mb_substr($p['url'] ?? '', 0, 500);
+            $isSafeUrl = (str_starts_with($url, '/assets/uploads/') && !str_contains($url, '..'))
+                || (filter_var($url, FILTER_VALIDATE_URL) !== false && isUrlSafe($url));
             $stmt->execute([
                 max(1, min(65535, intval($p['id'] ?? 0))),
-                mb_substr($p['url'] ?? '', 0, 500),
+                $isSafeUrl ? $url : '',
                 mb_substr($p['caption'] ?? '', 0, 200),
                 $sourceType,
                 $p['created_at'] ?? date('Y-m-d H:i:s'),
@@ -166,19 +175,22 @@ try {
 
     if (!empty($data['siteSettings'])) {
         $s = $data['siteSettings'];
-        ensureBreakupSchema($db);
         $stmt = $db->prepare("UPDATE site_settings SET icp_code = ?, police_record_code = ?, site_name = ?, timezone = ?, show_breakup_days = ? WHERE id = 1");
+        // 时区与 settings API 一致：白名单校验，非法值回退默认
+        $timezone = trim((string)($s['timezone'] ?? 'Asia/Shanghai'));
+        if (!in_array($timezone, timezone_identifiers_list(), true)) {
+            $timezone = 'Asia/Shanghai';
+        }
         $stmt->execute([
             mb_substr($s['icp_code'] ?? '', 0, 100),
             mb_substr($s['police_record_code'] ?? '', 0, 100),
             mb_substr($s['site_name'] ?? '', 0, 200),
-            mb_substr($s['timezone'] ?? 'Asia/Shanghai', 0, 50),
+            $timezone,
             intval($s['show_breakup_days'] ?? 0) === 1 ? 1 : 0
         ]);
     }
 
     if ($importPeriods !== null) {
-        ensureBreakupSchema($db);
         $db->exec("DELETE FROM breakup_periods");
         $stmt = $db->prepare("INSERT INTO breakup_periods (id, start_date, end_date, note, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)");
         foreach ($importPeriods as $p) {
@@ -200,7 +212,7 @@ try {
     Cache::clear('api_data');
     jsonResponse(true, null, '数据导入成功');
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     if (isset($db) && $db->inTransaction()) {
         $db->rollBack();
     }

@@ -21,17 +21,19 @@ class ExploreController extends CrudController {
     }
 
     protected function extractFields(array $data): array {
+        // is_string 防御：非标量输入直接 trim 会抛 TypeError（500）
+        $str = static fn($v): string => is_string($v) ? trim($v) : '';
         return [
-            'title' => trim($data['title'] ?? ''),
-            'description' => trim($data['description'] ?? ''),
-            'date' => trim($data['date'] ?? ''),
+            'title' => $str($data['title'] ?? ''),
+            'description' => $str($data['description'] ?? ''),
+            'date' => $str($data['date'] ?? ''),
         ];
     }
 
     protected function validateFields(array $fields, string $op): void {
         $errors = Validator::validate(
-            ['title' => $fields['title']],
-            ['title' => 'required|max:200']
+            ['title' => $fields['title'], 'date' => $fields['date']],
+            ['title' => 'required|max:200', 'date' => 'date']
         );
         if (!empty($errors)) {
             $this->error($errors[0], 'VALIDATION_ERROR');

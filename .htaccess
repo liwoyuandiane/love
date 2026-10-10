@@ -7,6 +7,15 @@
     RewriteEngine On
     RewriteBase /
 
+    # 安全拦截必须放在"物理文件短路"之前：
+    # 短路规则会让真实存在的文件（.git/*、.env.*、uploads 下的脚本）直接跳过后面的拦截规则
+    # 禁止隐藏文件/目录（.env、.env.local、.git 等；.well-known 供证书签发使用）
+    RewriteRule ^\.(?!well-known) - [F,L,NC]
+    # 禁止直接访问日志与缓存目录
+    RewriteRule ^(logs|cache)(/|$) - [F,L,NC]
+    # 禁止执行上传目录中的脚本（纵深防御：即使上传了 .php 也不解析）
+    RewriteRule ^assets/uploads/.*\.(php|phtml|php[0-9]|pl|py|cgi|sh)$ - [F,L,NC]
+
     # Skip physical files and directories from rewrite rules
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
@@ -53,24 +62,14 @@
 </IfModule>
 
 # 禁止直接访问敏感文件（.env、.git、日志、缓存、临时文件）
-<FilesMatch "^(\.env|\.env\.example|\.gitignore|\.dockerignore|Dockerfile|docker-compose\.yml|CLAUDE\.md|composer\.(json|lock)|package\.json|package-lock\.json)$">
+<FilesMatch "^(\.env|\.env\..*|\.gitignore|\.dockerignore|Dockerfile|docker-compose\.yml|CLAUDE\.md|composer\.(json|lock)|package\.json|package-lock\.json|phpunit\.xml)$">
     Require all denied
 </FilesMatch>
-
-# 禁止访问隐藏文件与目录（.git、.env.*、.gitignore 等）
-<IfModule mod_rewrite.c>
-    RewriteRule ^\.(?!well-known) - [F,L,NC]
-</IfModule>
 
 # 禁止目录列出
 Options -Indexes
 
-# 禁止执行上传目录中的脚本（纵深防御：即使上传了 .php 也不解析）
-<IfModule mod_rewrite.c>
-    RewriteRule ^assets/uploads/.*\.(php|phtml|php[0-9]|pl|py|cgi|sh)$ - [F,L,NC]
-</IfModule>
-
-# 禁止 PHP 在日志与缓存目录执行
+# 禁止 PHP 在日志与缓存目录执行（拦截访问见文件头部 RewriteRule）
 <FilesMatch "^(cache|logs)">
     <IfModule mod_php.c>
         php_flag engine off

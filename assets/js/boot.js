@@ -45,6 +45,22 @@
         const res = await fetch(url, { ...options, headers });
         if (res.status === 401) {
             await window.handleSessionExpiredResponse(res);
+        } else if (res.status === 403) {
+            // CSRF token 2 小时 TTL 过期后长开页面的所有写操作都会 403，
+            // 此前完全静默；给出明确提示引导用户刷新（刷新会重新生成 token）
+            let code = '';
+            try {
+                const body = await res.clone().json();
+                code = (body && body.error && body.error.code) || '';
+            } catch (e) { /* ignore */ }
+            if (code === 'CSRF_ERROR') {
+                const msg = '安全校验已过期，请刷新页面后重试';
+                if (typeof window.showToast === 'function') {
+                    window.showToast(msg, 'warning');
+                } else if (typeof window.createToast === 'function') {
+                    window.createToast(msg, 'warning');
+                }
+            }
         }
         return res;
     };

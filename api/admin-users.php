@@ -28,7 +28,7 @@ class AdminUserController extends BaseController {
             };
         } catch (ValidationException $e) {
             $this->error($e->getMessage(), 'VALIDATION_ERROR');
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Logger::error('Admin users API error: ' . $e->getMessage());
             $this->serverError();
         }
@@ -45,8 +45,8 @@ class AdminUserController extends BaseController {
             $this->error('未登录', 'UNAUTHORIZED', 401);
         }
 
-        $username = trim($data['username'] ?? '');
-        $password = $data['password'] ?? '';
+        $username = is_string($data['username'] ?? null) ? trim($data['username']) : '';
+        $password = is_string($data['password'] ?? null) ? $data['password'] : '';
 
         if (empty($username) && empty($password)) {
             $this->error('请填写用户名或密码', 'VALIDATION_ERROR');

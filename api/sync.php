@@ -10,6 +10,7 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/csrf.php';
 
 header('Content-Type: application/json');
 
@@ -33,12 +34,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// 与其他写接口保持一致：校验 CSRF（调用方 admin.js 走 csrfFetch 自动带 token）
+verifyCSRF();
+
 // 仅刷新会话活动时间即可，无需任何数据库查询
 $_SESSION['last_activity'] = time();
 
+// 顺带续发 CSRF token：token TTL 为 2 小时，长开的后台标签页
+// 若不续期，2 小时后所有写操作都会 403
 echo json_encode([
     'success' => true,
     'data' => [
-        'timestamp' => date('Y-m-d H:i:s')
+        'timestamp' => date('Y-m-d H:i:s'),
+        'csrf_token' => CSRF::generate()
     ]
 ]);

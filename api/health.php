@@ -31,7 +31,7 @@ try {
     $db = getDB();
     $db->query("SELECT 1");
     $health['checks']['database'] = ['status' => 'ok'];
-} catch (Exception $e) {
+} catch (Throwable $e) {
     $health['checks']['database'] = ['status' => 'error', 'message' => '数据库连接失败'];
     $health['status'] = 'degraded';
 }
@@ -59,13 +59,32 @@ $health['checks']['uploads'] = is_dir($uploadDir) && is_writable($uploadDir)
     ? ['status' => 'ok']
     : ['status' => 'warning', 'message' => '上传目录不可写'];
 
+// ini_get 返回 "20M" 这类带单位字符串，直接与整数比较会按数值 20 判定，恒为"需要调整"
+$parseIniSize = static function (string $value): int {
+    $value = trim($value);
+    if ($value === '' || $value === '0') {
+        return 0;
+    }
+    if ($value === '-1') {
+        return PHP_INT_MAX;
+    }
+    $unit = strtolower(substr($value, -1));
+    $num = (float)$value;
+    return (int)($num * match ($unit) {
+        'g' => 1073741824,
+        'm' => 1048576,
+        'k' => 1024,
+        default => 1
+    });
+};
+
 $health['checks']['php'] = [
     'upload_max_filesize' => ini_get('upload_max_filesize'),
     'post_max_size' => ini_get('post_max_size'),
     'memory_limit' => ini_get('memory_limit'),
     'file_uploads' => ini_get('file_uploads') ? 'on' : 'off',
     'max_execution_time' => ini_get('max_execution_time'),
-    'config_status' => (ini_get('upload_max_filesize') >= 20 * 1024 * 1024) ? 'ok' : '需要调整'
+    'config_status' => ($parseIniSize((string)ini_get('upload_max_filesize')) >= 20 * 1024 * 1024) ? 'ok' : '需要调整'
 ];
 
 $uploadsSize = 0;

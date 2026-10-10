@@ -51,7 +51,7 @@ class WishlistToggleController extends BaseController {
             Cache::clear('api_data');
             $this->success(['id' => $id, 'completed' => $newCompleted, 'completed_at' => $completedAt]);
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Logger::error('Wishlists toggle API error: ' . $e->getMessage());
             $this->serverError();
         }

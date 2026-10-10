@@ -56,17 +56,26 @@ document.addEventListener('DOMContentLoaded', function() {
         return fetch(url, { ...options, headers });
     };
 
+    // localStorage 在隐私模式/禁用存储的 WebView 中会抛异常，统一兜底，
+    // 避免主题初始化异常中断整个渲染链（renderWithData 第一步就调用）
+    function safeGetTheme() {
+        try { return localStorage.getItem('theme') || 'light'; } catch (e) { return 'light'; }
+    }
+
+    function safeSetTheme(theme) {
+        try { localStorage.setItem('theme', theme); } catch (e) { /* privacy mode */ }
+    }
+
     function initTheme() {
         // 默认白天模式（localStorage 无记录时），两态切换：白天 ⇄ 黑夜
-        const saved = localStorage.getItem('theme') || 'light';
-        applyTheme(saved);
+        applyTheme(safeGetTheme());
         $('themeToggle')?.addEventListener('click', cycleTheme);
     }
 
     function applyTheme(theme) {
         const actual = theme === 'dark' ? 'dark' : 'light';
         document.documentElement.setAttribute('data-theme', actual);
-        localStorage.setItem('theme', actual);
+        safeSetTheme(actual);
         const icon = $('themeToggle')?.querySelector('i');
         const btn = $('themeToggle');
         const labels = { light: '白天模式', dark: '黑夜模式' };
@@ -78,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function cycleTheme() {
-        const current = localStorage.getItem('theme') || 'light';
+        const current = safeGetTheme();
         applyTheme(current === 'dark' ? 'light' : 'dark');
     }
 
@@ -106,7 +115,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function syncData() {
         try {
-            const res = await fetch(`${API_BASE}/data`);
+            // 10 秒超时兜底：服务器挂起时避免每 60 秒堆积一个永不 resolve 的请求
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 10000);
+            const res = await fetch(`${API_BASE}/data`, { signal: ctrl.signal });
+            clearTimeout(timer);
             if (res.status === 401) return;
             const result = await res.json();
             if (result.success) {
@@ -126,7 +139,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     renderMusic();
                     const curAnn = newData.coupleInfo?.anniversary || null;
                     const curPeriods = JSON.stringify(newData.breakupPeriods || []);
-                    if ((prevAnn !== null && curAnn !== prevAnn) || curPeriods !== prevPeriods) {
+                    // !timerInterval：首次拿到真实数据时（此前 coupleInfo 缺失导致计时器未启动）
+                    // 也必须启动，否则计时器永远停在初始静态值
+                    if (!timerInterval || (prevAnn !== null && curAnn !== prevAnn) || curPeriods !== prevPeriods) {
                         clearInterval(timerInterval);
                         startTimer();
                     }
@@ -175,7 +190,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 2) 后台拉取最新数据，有变化才增量刷新
         try {
-            const res = await fetch(`${API_BASE}/data`);
+            // 10 秒超时兜底：服务器挂起时避免首屏无限白屏
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 10000);
+            const res = await fetch(`${API_BASE}/data`, { signal: ctrl.signal });
+            clearTimeout(timer);
             if (res.status === 401) {
                 if (!inited) { siteData = {}; renderWithData(); }
                 return;
@@ -199,7 +218,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         renderMusic();
                         const curAnn = newData.coupleInfo?.anniversary || null;
                         const curPeriods = JSON.stringify(newData.breakupPeriods || []);
-                        if ((prevAnn !== null && curAnn !== prevAnn) || curPeriods !== prevPeriods) {
+                        // 同 syncData：计时器不存在时也要启动（首屏走了缓存/空态兜底的场景）
+                        if (!timerInterval || (prevAnn !== null && curAnn !== prevAnn) || curPeriods !== prevPeriods) {
                             clearInterval(timerInterval);
                             startTimer();
                         }
@@ -236,7 +256,8 @@ document.addEventListener('DOMContentLoaded', function() {
         fill('footer-name1', name1); fill('footer-name2', name2);
         if (anniversary) {
             const elapsed = TogetherTime.computeElapsed(anniversary, siteData.breakupPeriods || [], Date.now());
-            renderMilestoneBadge(Math.ceil(elapsed.elapsedMs / TogetherTime.MS_PER_DAY));
+            // floor 而非 ceil：99天+1毫秒不应提前显示"100天纪念"
+            renderMilestoneBadge(Math.floor(elapsed.elapsedMs / TogetherTime.MS_PER_DAY));
         }
     }
 
@@ -299,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const items = siteData.anniversaries || [];
         if (!items.length) { list.innerHTML = emptyState('fa-calendar-heart','暂无纪念日'); return; }
         list.innerHTML = items.map(item => `
-            <li><span class="item-title"><i class="fas ${TYPE_ICONS[item.type]} item-icon"></i>${escape(item.title)}</span>
+            <li><span class="item-title"><i class="fas ${TYPE_ICONS[item.type] || 'fa-star'} item-icon"></i>${escape(item.title)}</span>
             ${item.date ? `<span class="item-date">${item.date.split('T')[0]}</span>` : ''}</li>`).join('');
         renderAnniversaryTimeline(items);
     }
@@ -308,12 +329,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const container = $('anniversary-timeline');
         if (!container) return;
         if (!items.length) { container.innerHTML = '<div class="timeline-empty"><i class="fas fa-clock"></i><p>暂无时间线</p></div>'; return; }
-        const sorted = [...items].sort((a, b) => a.date && b.date ? new Date(b.date) - new Date(a.date) : 1);
+        // null 日期项排最后（此前恒返回 1 不构成传递序，排序结果不稳定）
+        const sorted = [...items].sort((a, b) => a.date && b.date ? new Date(b.date) - new Date(a.date) : (a.date ? -1 : b.date ? 1 : 0));
         container.innerHTML = sorted.map((item) => `
             <div class="timeline-item">
                 <div class="timeline-marker"></div>
                 <div class="timeline-content">
-                    <span class="timeline-date"><i class="fas ${TYPE_ICONS[item.type]} item-icon"></i>${item.date ? item.date.split('T')[0] : '日期待定'}</span>
+                    <span class="timeline-date"><i class="fas ${TYPE_ICONS[item.type] || 'fa-star'} item-icon"></i>${item.date ? item.date.split('T')[0] : '日期待定'}</span>
                     <span class="timeline-title">${escape(item.title)}</span>
                     ${item.description ? `<p class="timeline-desc">${escape(item.description)}</p>` : ''}
                 </div>
@@ -328,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const items = siteData.wishlists || [];
         if (!items.length) { list.innerHTML = emptyState('fa-list-check','暂无愿望'); return; }
         list.innerHTML = items.map(item => `
-            <li class="${item.completed ? 'completed' : ''}" data-action="toggle-wishlist" data-id="${item.id}">
+            <li class="${item.completed ? 'completed' : ''}" data-action="toggle-wishlist" data-id="${item.id}" role="button" tabindex="0" aria-label="${item.completed ? '标记为未完成' : '标记为完成'}：${escape(item.title)}">
                 <span class="item-title">${escape(item.title)}</span>
                 <i class="${item.completed ? 'fas fa-check-circle' : 'far fa-circle'} item-status ${item.completed ? 'is-done' : 'is-pending'}"></i>
             </li>`).join('');
@@ -347,6 +369,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     renderWishlistList();
                 }
+            } else {
+                // CSRF token 过期（403）等失败场景此前完全静默，操作会无声丢失
+                let msg = '操作失败，请刷新页面后重试';
+                try { const body = await res.json(); if (body?.error?.message) msg = body.error.message; } catch (e) { /* ignore */ }
+                if (typeof window.createToast === 'function') window.createToast(msg, 'error');
             }
         } catch (e) { console.error('Toggle wishlist error:', e); }
     };
@@ -391,6 +418,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const img = btn.closest('.photo-card').querySelector('img');
         const retryCount = parseInt(img.dataset.retryCount || '0') + 1;
         img.dataset.retryCount = retryCount;
+        // error 监听是 {once:true}，触发后已销毁：重设 src 前必须重新绑定，
+        // 否则再次失败后重试按钮不再出现
+        img.addEventListener('error', () => handleImageError(img), { once: true });
         if (retryCount > 3) {
             img.src = img.dataset.url;
         } else {
@@ -590,6 +620,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 retryImage(target);
             }
         });
+        // role="button" 的元素（照片卡、心愿项）支持 Enter/Space 键盘触发
+        document.addEventListener('keydown', e => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const target = e.target instanceof Element ? e.target.closest('[data-action][tabindex]') : null;
+            if (!target || target.tagName === 'BUTTON') return;
+            e.preventDefault();
+            target.click();
+        });
     }
 
     window.openLightbox = function(idx) {
@@ -620,7 +658,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const isValidUrl = url => {
             if (!url) return false;
             try {
-                const parsed = new URL(url);
+                // 带 origin base：本地上传照片是相对路径（/assets/uploads/xxx），
+                // 不传 base 会直接抛异常导致灯箱翻页空白
+                const parsed = new URL(url, window.location.origin);
                 return ['http:', 'https:'].includes(parsed.protocol);
             } catch { return false; }
         };
