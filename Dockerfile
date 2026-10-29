@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 
-# PHP 基础版本（可通过 build-arg 覆盖，Actions 默认 8.2）
-ARG PHP_VERSION=8.2
+# PHP 基础版本（可通过 build-arg 覆盖，Actions 默认 8.3）
+# 8.2 安全支持 2026-12-31 终止；8.3 支持到 2027-12-31
+ARG PHP_VERSION=8.3
 
 # ============================================================
 # 阶段 1：构建阶段 —— 编译 PHP 扩展（GD / PDO MySQL）
@@ -61,6 +62,10 @@ RUN mkdir -p /var/lib/php/sessions \
 
 # 拷贝应用代码
 COPY . /var/www/html/
+
+# 语法门禁：用目标 PHP 版本全量校验源码。
+# 主版本升级（如 8.2→8.3）时，语法不兼容会在构建阶段直接失败，而非运行期报错。
+RUN find /var/www/html -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
 
 # 目录与权限（www-data 写 uploads/cache/logs，nginx 只读）
 RUN mkdir -p /var/www/html/cache /var/www/html/logs /var/www/html/assets/uploads \
