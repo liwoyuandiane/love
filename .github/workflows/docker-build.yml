@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+  # 定时重建：吸收 php/alpine 基础镜像安全补丁（如 2026-10 PHP2Shell 类紧急修复）
+  schedule:
+    - cron: '0 3 * * 1'   # 每周一 03:00 UTC（北京时间 11:00）
   workflow_dispatch:
     inputs:
       php_version:
@@ -65,3 +68,15 @@ jobs:
           # 多架构构建助手参数（可选，默认即可）
           build-args: |
             PHP_VERSION=${{ inputs.php_version || '8.2' }}
+
+      # 镜像漏洞扫描：HIGH/CRITICAL 且已有补丁的漏洞会使构建失败，提示及时处理
+      # 仅扫描 main 分支推送（latest 标签只在默认分支生成）
+      - name: Trivy vulnerability scan
+        if: github.ref == 'refs/heads/main'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH

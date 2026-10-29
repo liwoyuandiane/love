@@ -33,11 +33,13 @@ COPY --from=builder /usr/local/etc/php/conf.d/docker-php-ext-pdo_mysql.ini /usr/
 RUN cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini
 
 # 安装 Nginx 与 GD 运行时库（体积小、无编译工具链）
+# apk upgrade：吸收 Alpine 仓库安全补丁（nginx 等），避免构建产物带已知 CVE
 RUN apk add --no-cache nginx \
         libpng \
         libjpeg-turbo \
         libwebp \
         freetype \
+    && apk upgrade --no-cache \
     && mkdir -p /var/log/nginx /var/cache/nginx /run/nginx /var/www/html \
     && chown -R nginx:nginx /var/log/nginx /var/cache/nginx /run/nginx
 
